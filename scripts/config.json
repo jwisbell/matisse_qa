@@ -1,4 +1,5 @@
 {
     "data_dir": "/Users/jwisbell/Documents/matisse/cena/processeddata/lm_vis2_b5_v2/",
-    "output_dir": "/Users/jwisbell/Documents/matisse/cena/processeddata/lm_vis2_b5_v2/"
+    "output_dir": "/Users/jwisbell/Documents/matisse/cena/processeddata/lm_vis2_b5_v2/",
+    "verbose":"1"
 }

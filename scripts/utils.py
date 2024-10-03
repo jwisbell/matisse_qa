@@ -9,6 +9,15 @@ _ut_mapping = {
         '[34 35]':0
     }
 
+_ut_triplet_mapping = {
+        '[32 33 34]':1,
+        '[32 33 35]':2,
+        '[33 34 35]':0,
+        '[32 34 35]':3,
+    }
+
+bcd_marker_dict = {'oo':'o', 'ii':'s', 'oi':'^', 'io':'x', 'oo_phot':'d', 'ii_phot':'v'}
+
 
 def baseline_idx_from_stapair(sta_pair):
     return _ut_mapping[str(np.sort(sta_pair) )]
@@ -20,3 +29,23 @@ def baseline_name_from_stapair(sta_pair):
 
 
     return names[idx]
+
+def triplet_idx_from_statriplet(sta_triplet):
+    return _ut_triplet_mapping[str(np.sort(sta_triplet) )]
+
+
+def bcd_flip(ydata, sta_triplet, bcd):
+    if bcd == 'oi':
+        if str(np.sort(sta_triplet)) == '[32 33 34]':
+            return -1 * ydata
+        elif str(np.sort(sta_triplet)) == '[32 33 35]':
+            return -1 * ydata 
+    elif bcd == 'io':
+        if str(np.sort(sta_triplet)) == '[33 34 35]':
+            return -1*ydata
+        elif str(np.sort(sta_triplet)) == '[32 34 35]':
+            return -1*ydata
+    elif bcd == 'ii' or bcd == 'ii_phot':
+        return -1*ydata
+        
+    return ydata 

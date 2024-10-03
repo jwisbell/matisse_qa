@@ -21,7 +21,7 @@ normpa = mpl.colors.Normalize(vmin=-180,vmax=180)
 normvis = mpl.colors.Normalize(vmin=0,vmax=1.1)
 
 
-def plot_vis(data_dict, output_dir:str = '/.', save_fig:bool = False):
+def plot_vis(data_dict, output_dir:str = '/.', save_fig:bool = False, verbose=False):
     """
     data_dict: dictionary containing the following keys
     'vis':{"cflux":[],"cflux_err":[],"u":[], "v":[],"wl_vis":[],"vis2":[], "vis2_err":[],'bcd':[],'vis2_sta':[]
@@ -42,13 +42,11 @@ def plot_vis(data_dict, output_dir:str = '/.', save_fig:bool = False):
         sta = data_dict['vis2_sta'][i]
         idx = baseline_idx_from_stapair(sta)
         wls = data_dict['wl_vis'][i]
-        #name = baseline_name_from_stapair(sta)
         
         bl_lengths[idx].append(bl)
         pa = np.degrees(np.arctan2(v,u))
         im = axarr1.flatten()[idx].scatter(  data_dict['wl_vis'][i]*1e6, data_dict['cflux'][i], s=2, c=[pa]*len(data_dict['wl_vis'][i]), norm=normpa, cmap='twilight',zorder=1)
         axarr1.flatten()[idx].errorbar(  data_dict['wl_vis'][i]*1e6, data_dict['cflux'][i], yerr=data_dict['cflux_err'][i],zorder=0,color='k',ls='none',marker='.',alpha=0.1)
-        #axarr1.flatten()[i%6].set_ylim([0,0.5])
         axarr1.flatten()[idx].set_ylim([0,1.1])
 
         axarr1.flatten()[6].scatter(bl / wls / 1e6, data_dict['cflux'][i],c=[pa]*len(data_dict['wl_vis'][i]), norm=normpa, cmap='twilight',zorder=1, s=2)
@@ -140,12 +138,9 @@ def plot_vis(data_dict, output_dir:str = '/.', save_fig:bool = False):
 
 
     axarr1.flatten()[-1].axis('off')
-    #axarr1.flatten()[-2].axis('off')
-    #axarr1.flatten()[-3].axis('off')
-
+    
     axarr2.flatten()[-1].axis('off')
-    #axarr2.flatten()[-2].axis('off')
-    #axarr2.flatten()[-3].axis('off')
+    
 
     for i in range(6):
         axarr1.flatten()[i].set_title(f"{bl_names[i]}\nMean Proj. BL: {np.mean(bl_lengths[i]):.1f} m")
@@ -176,7 +171,7 @@ def plot_vis(data_dict, output_dir:str = '/.', save_fig:bool = False):
         fig3.savefig(f"{output_dir}/bcd_compare_vis.png")
 
     
-    if not save_fig:
+    if verbose:
         plt.show()
     plt.close("all")
 

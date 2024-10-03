@@ -13,7 +13,7 @@ Specifically
 from astropy.io import fits 
 
 
-def load_raw_int(fnames):
+def load_raw_int(fnames, verbose=False):
     """
     If fname is a single file load it, if fname is an array of files, load each.
     In both cases, return a data_dictionary (or pandas dataframe?)
@@ -21,17 +21,12 @@ def load_raw_int(fnames):
     if fnames is str:
         fnames = [fnames]
 
-    data = {'vis':{"cflux":[],"cflux_err":[],"u":[], "v":[],"wl_vis":[],"vis2":[], "vis2_err":[],'bcd':[],'vis2_sta':[] },\
+    #TODO: properly handle differential phase
+    data = {'vis':{"cflux":[],"cflux_err":[],"u":[], "v":[],"wl_vis":[],"vis2":[], "vis2_err":[],'bcd':[],'vis2_sta':[],'diff_phase':[],'diff_phase_err':[] },\
             'cphase':{"t3phi":[],"t3phi_err":[], "u1":[],"u2":[], "v1":[],"v2":[],"wl_t3":[], "t3_sta":[], 'bcd':[]},\
             'phot':{"phot_flux":[], "phot_flux_err":[], "phot_tel":[], "phot_wl":[], 'bcd':[]},
             'inst':{'bcd':[] }}
-
-    """
-    files_oo = np.sort(glob(fdir+'/*_???_INT_0005.fits'))
-        files_ii = np.sort(glob(fdir+'/*_???_INT_0006.fits'))
-        files_io = np.sort(glob(fdir+'/*_???_INT_0005.fits'))
-        files_oi = np.sort(glob(fdir+'/*_???_INT_0006.fits'))"""
-
+    
     for f in fnames:
         x = fits.open(f)
         print(f'\t\t {f}')
