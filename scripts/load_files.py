@@ -11,6 +11,7 @@ Specifically
 3. Loads photometric files
 """
 
+import numpy as np
 from astropy.io import fits
 
 
@@ -64,6 +65,13 @@ def load_raw_int(fnames, verbose: int = 0):
         data["inst"]["tpl"] = x[0].header["eso tpl start"]
         data["inst"]["targname"] = (
             x[0].header["eso obs targ name"].strip().replace(" ", "")
+        )
+
+        data["inst"]["tau0"] = np.mean(
+            [
+                float(x[0].header["ESO ISS AMBI TAU0 START"]),
+                float(x[0].header["ESO ISS AMBI TAU0 END"]),
+            ]
         )
 
         bcd = "oo"
@@ -120,5 +128,37 @@ def load_raw_int(fnames, verbose: int = 0):
     return data
 
 
-def load_opd(fname):
-    return None
+def load_opd(fnames, verbose=0):
+    """
+    If fname is a single file load it, if fname is an array of files, load each.
+    In both cases, return a data_dictionary (or pandas dataframe?)
+    """
+    if fnames is str:
+        fnames = [fnames]
+
+    # TODO: properly handle differential phase
+    data = {}
+
+    for f in fnames:
+        x = fits.open(f)
+        time = x[3].data["mjd"]
+        opd = x[3].data["opd"]
+
+        sta_idx = x[3].data["sta_index"]
+        bcd = "oo"
+        if "0002.fits" in f:
+            bcd = "ii"
+        elif "0003.fits" in f:
+            bcd = "io"
+        elif "0004.fits" in f:
+            bcd = "oi"
+        elif "0005.fits" in f:
+            bcd = "oo_phot"
+        elif "0006.fits" in f:
+            bcd = "ii_phot"
+
+        sta_pairs = [(sta_idx[0][i], sta_idx[0][i + 1]) for i in range(0, 12, 2)]
+
+        data[bcd] = {"time": time, "opd": opd, "tel": sta_pairs}
+
+    return data
