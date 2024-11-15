@@ -2,7 +2,6 @@ import numpy as np
 from astropy.io import fits
 import matplotlib.pyplot as plt
 
-slice_locations = {"1": 355, "2": 395}
 raw_slice_locs = {"1": 334, "2": 355, "3": 378, "4": 402, "5": 425, "6": 445}
 
 
@@ -17,8 +16,7 @@ def testing(fname):
     ift_shift = ift * np.exp(-1j * np.angle(ift))
     fft_shift = np.fft.fftshift(np.fft.fft2(ift_shift))
 
-    ft_test = ft / np.exp(1j * np.angle(ft))
-    fig = plt.figure()
+    _ = plt.figure()
     plt.imshow(
         np.abs(fft_shift),
         origin="lower",
@@ -26,15 +24,11 @@ def testing(fname):
     plt.scatter(350, 63)
     plt.show()
 
-    slices = {k: [] for k in slice_locations}
-    width = 20
     test = []
     test_gd = []
     for real, imag in zip(x[1].data["corrfluxreal1"], x[1].data["corrfluximag1"]):
         ft = real + 1j * imag
         gd = np.angle(ft, deg=False)
-
-        ft_test = ft * np.exp(-1j * np.angle(ft))
 
         # print(ampft, phaseft)
         ift = np.fft.fftshift(np.fft.ifft2(ft))
@@ -52,11 +46,11 @@ def testing(fname):
         )
         test_gd.append(np.mean(np.diff(gd)[20:40], 0)[350] * 3.6)
 
-    fig = plt.subplots()
+    _ = plt.subplots()
     plt.imshow(np.sqrt(np.abs(test)), origin="lower")
     plt.show()
 
-    fig = plt.subplots()
+    _ = plt.subplots()
     plt.plot(test_gd)
     plt.show()
 
@@ -70,54 +64,59 @@ def argmax2d(arr):
     return s[1], s[0]
 
 
-def test_raw(targ, sky):
+def _basic_waterfall(
+    targ, sky_files, output_dir: str = "/.", save_fig: bool = False, verbose: int = 0
+):
+    # using rudimentary bad pixel correction and sky subtraction, use the raw interferogram to
+    # make a waterfall plot for the set of exposures in the targ file
     xf = fits.open(targ)
     ext = "imaging_data"
 
-    sky = calc_mean_sky(sky)
+    """
+    for k in list(xf[0].header.keys()):
+        if "chop" in k.lower():
+            print(k, xf[0].header[k])
+    """
+
+    # load some basic info for displaying
+    targname = xf[0].header["eso obs targ name"]
+    tpl = xf[0].header["eso tpl start"]
+    bcd = f"{xf[0].header['ESO INS BCD1 ID']}-{xf[0].header['ESO INS BCD2 ID']}"
+    mjds = []
+    is_chopping = xf[0].header["eso iss chop st"] == "T"
+
+    # calculate the mean sky
+    sky = np.mean([_calc_mean_sky(sf) for sf in sky_files], 0)
 
     slices = {k: [] for k in raw_slice_locs}
     w = 15
 
-    fig = plt.figure()
-
+    # load each interferogram and process it
     for i in range(len(xf[ext].data)):
         interferogram = xf[ext].data[i][11]
+        mjds.append(xf[ext].data[i][0])
 
         obs = np.array(interferogram - sky, dtype="float")
-        obs[obs >= 65300] = np.nan
 
+        # do rudimentary bad pixel correction
+        obs[obs >= 65300] = np.nan
         s = np.where(np.isnan(obs))
         for x, y in zip(s[0], s[1]):
             obs[x, y] = np.nanmedian(obs[x - 2 : x + 2, y - 2 : y + 2])
         obs[np.isnan(obs)] = 0.0
         obs -= np.min(obs)
 
-        plt.scatter(i, np.nanmean(obs))
-
-        # if np.nanmean(obs) < 50:
-        #    continue
-
-        # plt.plot(i, np.nanmean(obs))
         ft = np.fft.fftshift(np.fft.fft2(obs))
-        # ft -= np.mean(ft)
 
-        # plt.scatter(i, np.nanmean(np.abs(ft)))
         for key, val in raw_slice_locs.items():
-            # plt.scatter(val, 60)
             xc, yc = argmax2d(np.abs(ft)[60 - 5 : 60 + 5, val - 10 : val + 10])
-            # plt.scatter(xc + val - 10, yc + 60 - 5, marker="x")
             slc = np.abs(ft)[yc + 60 - 5, val - w : val + w]
             slc -= np.mean(slc)
             slc /= np.max(slc)
             slices[key].append(slc.flatten())
 
-    plt.close()
-    plt.show()
-
-    fig, axarr = plt.subplots(1, 6)
+    _, axarr = plt.subplots(1, 6)
     for idx, (key, value) in enumerate(slices.items()):
-        print(value)
         axarr.flatten()[idx].imshow(
             np.array(value),
             origin="upper",
@@ -126,16 +125,27 @@ def test_raw(targ, sky):
             vmin=-0.1,
             vmax=1,
         )
+    plt.suptitle(
+        f"{targname} @ {tpl}\n(BCD:{bcd} starting MJD {mjds[0]:.4f}, chopping={is_chopping}) "
+    )
     axarr.flatten()[0].set_ylabel("Time [increasing downward]")
     axarr.flatten()[0].set_xlabel("OPD")
-    plt.show()
+    plt.tight_layout()
 
+    if output_dir is not None and save_fig:
+        plt.savefig(
+            f"{output_dir}/{targname}_waterfall_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.pdf"
+        )
+
+    if verbose > 1:
+        plt.show()
     plt.close("all")
 
-    # print(x[ext].data["tdim1"])
+    return None
 
 
-def get_files_from_sof(sofname):
+def _get_files_from_sof(sofname):
+    # extract all the sky and targ/calib files from the sof that the pipeline generates
     sky_files = []
     targ_files = []
     with open(sofname, "r") as f:
@@ -149,7 +159,8 @@ def get_files_from_sof(sofname):
     return targ_files, sky_files
 
 
-def calc_mean_sky(sky_file):
+def _calc_mean_sky(sky_file):
+    # calculate the mean sky from the sky exposures
     sf = fits.open(sky_file)
     ext = "imaging_data"
 
@@ -160,18 +171,30 @@ def calc_mean_sky(sky_file):
     return np.mean(sky_vals, 0)
 
 
+def do_waterfall(sof, output_dir, verbose, save_fig):
+    # find the right files and then call the plotting function
+    # the main script is responsible for finding the sof
+
+    targ_files, sky_files = _get_files_from_sof(sof)
+
+    for tf in targ_files:
+        _basic_waterfall(
+            tf, sky_files, output_dir=output_dir, verbose=verbose, save_fig=save_fig
+        )
+
+
 if __name__ == "__main__":
     from sys import argv
 
     script, fname = argv
 
     # testing(fname)
-    # test_raw(
+    # basic_waterfall(
     #    "/Users/jwisbell/Documents/matisse/cena/rawdata/MATIS.2022-04-24T01:15:01.244.fits",
     #    "/Users/jwisbell/Documents/matisse/cena/rawdata/MATIS.2022-04-24T01:07:28.669.fits",
     #    "/Users/jwisbell/Documents/matisse/cena/rawdata/M.MATISSE.2022-02-15T13:08:58.613.fits",
     # )
-    # test_raw(
+    # basic_waterfall(
     #    "/Users/jwisbell/Documents/matisse/cena/rawdata/MATIS.2022-04-24T00:48:51.358.fits",
     #    "/Users/jwisbell/Documents/matisse/cena/rawdata/MATIS.2022-04-24T00:32:13.530.fits",
     #    "",
@@ -181,9 +204,9 @@ if __name__ == "__main__":
     #    "/Users/jwisbell/Documents/matisse/cena/processeddata/lm_vis2_b5_v2/mat_raw_estimates.2022-04-24T00:30:39.HAWAII-2RG.sof"
     # )
 
-    targ_files, sky_files = get_files_from_sof(
+    targ_files, sky_files = _get_files_from_sof(
         "/Users/jwisbell/Documents/matisse/cena/processeddata/lm_vis2_b5_v2/mat_raw_estimates.2022-04-24T01:06:38.HAWAII-2RG.sof"
     )
 
     for tf in targ_files:
-        test_raw(tf, sky_files[0])
+        _basic_waterfall(tf, sky_files)
