@@ -136,7 +136,6 @@ def load_opd(fnames, verbose=0):
     if fnames is str:
         fnames = [fnames]
 
-    # TODO: properly handle differential phase
     data = {}
 
     for f in fnames:
