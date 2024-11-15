@@ -98,7 +98,7 @@ if __name__ == "__main__":
         # objcorr_files = glob(f"{d}/*OBJ_CORR*.fits")
 
         opd_dict = load_opd(opd_files, verbose=verbose)
-        plot_opd(data_dict, opd_dict, verbose=verbose, output_dir=None)
+        plot_opd(data_dict, opd_dict, verbose=verbose, output_dir=formatted_outdir)
 
     print("Now showing all targets that have been processed!")
     get_obs(db_name)
