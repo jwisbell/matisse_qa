@@ -1,60 +1,119 @@
 import numpy as np
 from astropy.io import fits
 import matplotlib.pyplot as plt
+from glob import glob
 
-raw_slice_locs = {"1": 334, "2": 355, "3": 378, "4": 402, "5": 425, "6": 445}
+raw_slice_locs = {"1": 334, "2": 355, "3": 379, "4": 402, "5": 421, "6": 442}
+
+colors_dict = {
+    "t1t2": "blue",
+    "t1t3": "red",
+    "t1t4": "green",
+    "t2t3": "mediumorchid",
+    "t2t4": "orange",
+    "t3t4": "brown",
+}
 
 
-def testing(fname):
+def _compute_group_delay(fname, wl=3.6):
     x = fits.open(fname)
 
-    print(x[1].header)
-
-    ft = x[1].data["corrfluxreal1"][0] + 1j * x[1].data["corrfluximag1"][0]
-    ift = np.fft.fftshift(np.fft.ifft2(ft))
-
-    ift_shift = ift * np.exp(-1j * np.angle(ift))
-    fft_shift = np.fft.fftshift(np.fft.fft2(ift_shift))
-
-    _ = plt.figure()
-    plt.imshow(
-        np.abs(fft_shift),
-        origin="lower",
+    targname = x[0].header["eso obs targ name"]
+    tpl = x[0].header["eso tpl start"]
+    bcd_config = (
+        f"{x[0].header['ESO INS BCD1 ID']}-{x[0].header['ESO INS BCD2 ID']}".lower()
     )
-    plt.scatter(350, 63)
-    plt.show()
+    test_gd = {int(k) - 1: [] for k in raw_slice_locs}
+    times = []
 
-    test = []
-    test_gd = []
-    for real, imag in zip(x[1].data["corrfluxreal1"], x[1].data["corrfluximag1"]):
+    group_delay_dict = {
+        "out-out": {
+            "t3t4": [],
+            "t1t2": [],
+            "t1t3": [],
+            "t1t4": [],
+            "t2t3": [],
+            "t2t4": [],
+        },
+        "out-in": {
+            "t3t4": [],
+            "t1t2": [],
+            "t1t3": [],
+            "t1t4": [],
+            "t2t3": [],
+            "t2t4": [],
+        },
+        "in-out": {
+            "t3t4": [],
+            "t1t2": [],
+            "t1t3": [],
+            "t1t4": [],
+            "t2t3": [],
+            "t2t4": [],
+        },
+        "in-in": {
+            "t3t4": [],
+            "t1t2": [],
+            "t1t3": [],
+            "t1t4": [],
+            "t2t3": [],
+            "t2t4": [],
+        },
+    }
+
+    for real, imag, mjd in zip(
+        x[1].data["corrfluxreal1"], x[1].data["corrfluximag1"], x[1].data["time"]
+    ):
         ft = real + 1j * imag
         gd = np.angle(ft, deg=False)
+        times.append(mjd)
+        for k, v in test_gd.items():
+            v.append(np.mean(np.diff(gd)[20:40], 0)[raw_slice_locs[f"{k+1}"]] * wl)
 
-        # print(ampft, phaseft)
-        ift = np.fft.fftshift(np.fft.ifft2(ft))
-
-        ift_shift = ift * np.exp(-1j * np.angle(ift))
-        fft_shift = np.fft.fftshift(np.fft.fft2(ift_shift))
-
-        # for k,v in slice_locations.items():
-        # slices[k].append(ft[63, v-width:v+width])
-        test.append(
-            fft_shift[
-                fft_shift.shape[0] // 2,
-                320 : 320 + 120,
-            ],
-        )
-        test_gd.append(np.mean(np.diff(gd)[20:40], 0)[350] * 3.6)
-
-    _ = plt.subplots()
-    plt.imshow(np.sqrt(np.abs(test)), origin="lower")
-    plt.show()
-
-    _ = plt.subplots()
-    plt.plot(test_gd)
+    if bcd_config == "out-out":
+        group_delay_dict["out-out"]["t3t4"] = test_gd[0]
+        group_delay_dict["out-out"]["t1t2"] = test_gd[1]
+        group_delay_dict["out-out"]["t2t3"] = test_gd[2]
+        group_delay_dict["out-out"]["t2t4"] = test_gd[3]
+        group_delay_dict["out-out"]["t1t3"] = test_gd[4]
+        group_delay_dict["out-out"]["t1t4"] = test_gd[5]
+    elif bcd_config == "out-in":
+        group_delay_dict["out-out"]["t3t4"] = test_gd[0]
+        group_delay_dict["out-out"]["t1t2"] = test_gd[1]
+        group_delay_dict["out-out"]["t1t3"] = test_gd[2]
+        group_delay_dict["out-out"]["t1t4"] = test_gd[3]
+        group_delay_dict["out-out"]["t2t3"] = test_gd[4]
+        group_delay_dict["out-out"]["t2t4"] = test_gd[5]
+    elif bcd_config == "in-out":
+        group_delay_dict["out-out"]["t3t4"] = test_gd[0]
+        group_delay_dict["out-out"]["t1t2"] = test_gd[1]
+        group_delay_dict["out-out"]["t2t4"] = test_gd[2]
+        group_delay_dict["out-out"]["t2t3"] = test_gd[3]
+        group_delay_dict["out-out"]["t1t4"] = test_gd[4]
+        group_delay_dict["out-out"]["t1t3"] = test_gd[5]
+    elif bcd_config == "in-in":
+        group_delay_dict["out-out"]["t3t4"] = test_gd[0]
+        group_delay_dict["out-out"]["t1t2"] = test_gd[1]
+        group_delay_dict["out-out"]["t1t4"] = test_gd[2]
+        group_delay_dict["out-out"]["t1t3"] = test_gd[3]
+        group_delay_dict["out-out"]["t2t4"] = test_gd[4]
+        group_delay_dict["out-out"]["t2t3"] = test_gd[5]
+    """_ = plt.subplots()
+    for k, v in test_gd.items():
+        plt.plot(times, np.array(v) + 15 * int(k), label=k)
+    plt.legend()
     plt.show()
 
     plt.close("all")
+    """
+    gd_dict = {
+        "times": np.array(times),
+        "vals": group_delay_dict,
+        "target": targname,
+        "bcd": bcd_config,
+        "tpl": tpl,
+    }
+    return gd_dict
 
 
 def argmax2d(arr):
@@ -171,6 +230,66 @@ def _calc_mean_sky(sky_file):
     return np.mean(sky_vals, 0)
 
 
+def do_group_delay(files, wl, output_dir, verbose, save_fig):
+    # plot the group delay from all the OBJ_CORR_FLUX files
+    all_vals = []
+    for fname in files:
+        all_vals.append(_compute_group_delay(fname, wl))
+
+    offset_dict = {
+        "t1t2": 0,
+        "t1t3": 15,
+        "t1t4": 30,
+        "t2t3": 45,
+        "t2t4": 60,
+        "t3t4": 75,
+    }
+
+    _ = plt.figure(figsize=(11, 8.5))
+    max_time = 0
+    for entry in all_vals:
+        times = entry["times"]
+        if np.max(times) > max_time:
+            max_time = np.max(times)
+        gd_vals = entry["vals"]
+        target = entry["target"]
+        bcd = entry["bcd"]
+        plt.text(times[0], 90, f"{bcd}")
+        for key, val in gd_vals["out-out"].items():
+            offset = offset_dict[key]
+            plt.plot(
+                times,
+                np.array(val) + offset,
+                color=colors_dict[key],
+                alpha=0.5,
+            )
+            plt.plot(times, [offset] * len(times), "k--")
+            plt.fill_between(
+                times,
+                [offset + 5] * len(times),
+                [offset - 5] * len(times),
+                color="gray",
+                alpha=0.5,
+            )
+    for key, value in offset_dict.items():
+        plt.text(max_time, value, f"{key}")
+    plt.suptitle(f"{target}")
+    plt.xlabel("MJD")
+    plt.ylabel("Group Delay [um] (+offset)")
+    plt.tight_layout()
+
+    if output_dir is not None and save_fig:
+        plt.savefig(f"{output_dir}/{target}_group_delay_lambda{wl}.pdf")
+
+    if verbose > 1:
+        plt.show()
+    plt.close("all")
+
+    return None
+
+    plt.close()
+
+
 def do_waterfall(sof, output_dir, verbose, save_fig):
     # find the right files and then call the plotting function
     # the main script is responsible for finding the sof
@@ -186,27 +305,18 @@ def do_waterfall(sof, output_dir, verbose, save_fig):
 if __name__ == "__main__":
     from sys import argv
 
-    script, fname = argv
+    script, fdir = argv
 
-    # testing(fname)
-    # basic_waterfall(
-    #    "/Users/jwisbell/Documents/matisse/cena/rawdata/MATIS.2022-04-24T01:15:01.244.fits",
-    #    "/Users/jwisbell/Documents/matisse/cena/rawdata/MATIS.2022-04-24T01:07:28.669.fits",
-    #    "/Users/jwisbell/Documents/matisse/cena/rawdata/M.MATISSE.2022-02-15T13:08:58.613.fits",
-    # )
-    # basic_waterfall(
-    #    "/Users/jwisbell/Documents/matisse/cena/rawdata/MATIS.2022-04-24T00:48:51.358.fits",
-    #    "/Users/jwisbell/Documents/matisse/cena/rawdata/MATIS.2022-04-24T00:32:13.530.fits",
-    #    "",
-    # )
+    fnames = np.sort(glob(f"{fdir}/OBJ_CORR_FLUX*.fits"))
+    do_group_delay(fnames, 3.6, output_dir=None, verbose=2, save_fig=False)
 
-    # targ_files, sky_files = get_files_from_sof(
-    #    "/Users/jwisbell/Documents/matisse/cena/processeddata/lm_vis2_b5_v2/mat_raw_estimates.2022-04-24T00:30:39.HAWAII-2RG.sof"
-    # )
+    exit()
+
+    # below here is working okay for now
 
     targ_files, sky_files = _get_files_from_sof(
         "/Users/jwisbell/Documents/matisse/cena/processeddata/lm_vis2_b5_v2/mat_raw_estimates.2022-04-24T01:06:38.HAWAII-2RG.sof"
     )
 
     for tf in targ_files:
-        _basic_waterfall(tf, sky_files)
+        _basic_waterfall(tf, sky_files, verbose=2)
