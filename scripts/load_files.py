@@ -13,6 +13,7 @@ Specifically
 
 import numpy as np
 from astropy.io import fits
+from glob import glob
 
 
 def load_raw_int(fnames, verbose: int = 0):
@@ -58,6 +59,8 @@ def load_raw_int(fnames, verbose: int = 0):
         },
         "inst": {"bcd": [], "tpl": "", "targname": ""},
     }
+
+    # TODO: extract detector name
 
     for f in fnames:
         x = fits.open(f)
@@ -161,3 +164,15 @@ def load_opd(fnames, verbose=0):
         data[bcd] = {"time": time, "opd": opd, "tel": sta_pairs}
 
     return data
+
+
+def find_sof(fdir, tpl):
+    # search in this fdir for a file with extension .sof that matches the tpl
+    time = tpl.replace("_", ":")
+    files = glob(f"{fdir}/*mat_raw_estimates*.sof")
+    print(files, time)
+    for file in files:
+        if time in file:
+            return file
+
+    raise FileNotFoundError

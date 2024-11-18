@@ -3,7 +3,7 @@ from astropy.io import fits
 import matplotlib.pyplot as plt
 from glob import glob
 
-raw_slice_locs = {"1": 334, "2": 355, "3": 379, "4": 402, "5": 421, "6": 442}
+lm_raw_slice_locs = {"1": 334, "2": 355, "3": 379, "4": 402, "5": 421, "6": 442}
 
 colors_dict = {
     "t1t2": "blue",
@@ -15,7 +15,7 @@ colors_dict = {
 }
 
 
-def _compute_group_delay(fname, wl=3.6):
+def _compute_obj_corr_vals(fname, band, wl=3.6):
     x = fits.open(fname)
 
     targname = x[0].header["eso obs targ name"]
@@ -23,10 +23,62 @@ def _compute_group_delay(fname, wl=3.6):
     bcd_config = (
         f"{x[0].header['ESO INS BCD1 ID']}-{x[0].header['ESO INS BCD2 ID']}".lower()
     )
-    test_gd = {int(k) - 1: [] for k in raw_slice_locs}
+    test_gd = {int(k) - 1: [] for k in lm_raw_slice_locs}
+    test_fp = {int(k) - 1: [] for k in lm_raw_slice_locs}
+    if band == "N":
+        # TODO: handle differently
+        test_gd = {int(k) - 1: [] for k in lm_raw_slice_locs}
+        test_fp = {int(k) - 1: [] for k in lm_raw_slice_locs}
+
     times = []
 
+    wl_min = 13.0
+    wl_max = 8.0  # nband is flipped
+    if band == "LM":
+        wl_min = 3.0
+        wl_max = 5.0
+
+    nchannels = x[1].data["corrfluxreal1"][0].shape[0]
+    all_wls = np.linspace(wl_min, wl_max, nchannels)
+    wl_idx = np.argmin(np.abs(all_wls - wl))
+    wl_w = 10
+
     group_delay_dict = {
+        "out-out": {
+            "t3t4": [],
+            "t1t2": [],
+            "t1t3": [],
+            "t1t4": [],
+            "t2t3": [],
+            "t2t4": [],
+        },
+        "out-in": {
+            "t3t4": [],
+            "t1t2": [],
+            "t1t3": [],
+            "t1t4": [],
+            "t2t3": [],
+            "t2t4": [],
+        },
+        "in-out": {
+            "t3t4": [],
+            "t1t2": [],
+            "t1t3": [],
+            "t1t4": [],
+            "t2t3": [],
+            "t2t4": [],
+        },
+        "in-in": {
+            "t3t4": [],
+            "t1t2": [],
+            "t1t3": [],
+            "t1t4": [],
+            "t2t3": [],
+            "t2t4": [],
+        },
+    }
+
+    fringe_peak_dict = {
         "out-out": {
             "t3t4": [],
             "t1t2": [],
@@ -68,7 +120,17 @@ def _compute_group_delay(fname, wl=3.6):
         gd = np.angle(ft, deg=False)
         times.append(mjd)
         for k, v in test_gd.items():
-            v.append(np.mean(np.diff(gd)[20:40], 0)[raw_slice_locs[f"{k+1}"]] * wl)
+            v.append(
+                np.mean(np.diff(gd)[wl_idx - wl_w : wl_idx + wl_w], 0)[
+                    lm_raw_slice_locs[f"{k+1}"]
+                ]
+                * wl
+            )
+            test_fp[k].append(
+                np.max(np.abs(ft)[wl_idx - wl_w : wl_idx + wl_w], 0)[
+                    lm_raw_slice_locs[f"{k+1}"]
+                ]
+            )
 
     if bcd_config == "out-out":
         group_delay_dict["out-out"]["t3t4"] = test_gd[0]
@@ -98,6 +160,35 @@ def _compute_group_delay(fname, wl=3.6):
         group_delay_dict["out-out"]["t1t3"] = test_gd[3]
         group_delay_dict["out-out"]["t2t4"] = test_gd[4]
         group_delay_dict["out-out"]["t2t3"] = test_gd[5]
+
+    if bcd_config == "out-out":
+        fringe_peak_dict["out-out"]["t3t4"] = test_fp[0]
+        fringe_peak_dict["out-out"]["t1t2"] = test_fp[1]
+        fringe_peak_dict["out-out"]["t2t3"] = test_fp[2]
+        fringe_peak_dict["out-out"]["t2t4"] = test_fp[3]
+        fringe_peak_dict["out-out"]["t1t3"] = test_fp[4]
+        fringe_peak_dict["out-out"]["t1t4"] = test_fp[5]
+    elif bcd_config == "out-in":
+        fringe_peak_dict["out-out"]["t3t4"] = test_fp[0]
+        fringe_peak_dict["out-out"]["t1t2"] = test_fp[1]
+        fringe_peak_dict["out-out"]["t1t3"] = test_fp[2]
+        fringe_peak_dict["out-out"]["t1t4"] = test_fp[3]
+        fringe_peak_dict["out-out"]["t2t3"] = test_fp[4]
+        fringe_peak_dict["out-out"]["t2t4"] = test_fp[5]
+    elif bcd_config == "in-out":
+        fringe_peak_dict["out-out"]["t3t4"] = test_fp[0]
+        fringe_peak_dict["out-out"]["t1t2"] = test_fp[1]
+        fringe_peak_dict["out-out"]["t2t4"] = test_fp[2]
+        fringe_peak_dict["out-out"]["t2t3"] = test_fp[3]
+        fringe_peak_dict["out-out"]["t1t4"] = test_fp[4]
+        fringe_peak_dict["out-out"]["t1t3"] = test_fp[5]
+    elif bcd_config == "in-in":
+        fringe_peak_dict["out-out"]["t3t4"] = test_fp[0]
+        fringe_peak_dict["out-out"]["t1t2"] = test_fp[1]
+        fringe_peak_dict["out-out"]["t1t4"] = test_fp[2]
+        fringe_peak_dict["out-out"]["t1t3"] = test_fp[3]
+        fringe_peak_dict["out-out"]["t2t4"] = test_fp[4]
+        fringe_peak_dict["out-out"]["t2t3"] = test_fp[5]
     """_ = plt.subplots()
     for k, v in test_gd.items():
         plt.plot(times, np.array(v) + 15 * int(k), label=k)
@@ -108,7 +199,8 @@ def _compute_group_delay(fname, wl=3.6):
     """
     gd_dict = {
         "times": np.array(times),
-        "vals": group_delay_dict,
+        "group_delay": group_delay_dict,
+        "fringe_peak": fringe_peak_dict,
         "target": targname,
         "bcd": bcd_config,
         "tpl": tpl,
@@ -147,8 +239,8 @@ def _basic_waterfall(
     # calculate the mean sky
     sky = np.mean([_calc_mean_sky(sf) for sf in sky_files], 0)
 
-    slices = {k: [] for k in raw_slice_locs}
-    w = 15
+    slices = {k: [] for k in lm_raw_slice_locs}
+    w = 10
 
     # load each interferogram and process it
     for i in range(len(xf[ext].data)):
@@ -167,7 +259,7 @@ def _basic_waterfall(
 
         ft = np.fft.fftshift(np.fft.fft2(obs))
 
-        for key, val in raw_slice_locs.items():
+        for key, val in lm_raw_slice_locs.items():
             xc, yc = argmax2d(np.abs(ft)[60 - 5 : 60 + 5, val - 10 : val + 10])
             slc = np.abs(ft)[yc + 60 - 5, val - w : val + w]
             slc -= np.mean(slc)
@@ -230,11 +322,11 @@ def _calc_mean_sky(sky_file):
     return np.mean(sky_vals, 0)
 
 
-def do_group_delay(files, wl, output_dir, verbose, save_fig):
+def do_obj_corr_plots(files, band, wl, output_dir, verbose, save_fig):
     # plot the group delay from all the OBJ_CORR_FLUX files
     all_vals = []
     for fname in files:
-        all_vals.append(_compute_group_delay(fname, wl))
+        all_vals.append(_compute_obj_corr_vals(fname, band, wl))
 
     offset_dict = {
         "t1t2": 0,
@@ -245,41 +337,71 @@ def do_group_delay(files, wl, output_dir, verbose, save_fig):
         "t3t4": 75,
     }
 
-    _ = plt.figure(figsize=(11, 8.5))
+    fig1, ax = plt.subplots(figsize=(11, 8.5))
+    fig2, bx = plt.subplots(figsize=(11, 8.5))
     max_time = 0
     for entry in all_vals:
         times = entry["times"]
         if np.max(times) > max_time:
             max_time = np.max(times)
-        gd_vals = entry["vals"]
+        gd_vals = entry["group_delay"]
+        fp_vals = entry["fringe_peak"]
         target = entry["target"]
         bcd = entry["bcd"]
-        plt.text(times[0], 90, f"{bcd}")
+        ax.text(times[0], 80, f"{bcd}")
+        bx.text(times[0], 16.5, f"{bcd}")
         for key, val in gd_vals["out-out"].items():
             offset = offset_dict[key]
-            plt.plot(
+
+            fp_yval = np.array(fp_vals["out-out"][key])
+            # fp_yval -= np.min(fp_yval)
+            fp_yval /= np.mean(fp_yval)
+            fp_offset = offset_dict[key] / 15 * 3
+
+            ax.plot(
                 times,
                 np.array(val) + offset,
                 color=colors_dict[key],
                 alpha=0.5,
             )
-            plt.plot(times, [offset] * len(times), "k--")
-            plt.fill_between(
+            ax.plot(times, [offset] * len(times), "k--")
+            ax.fill_between(
                 times,
                 [offset + 5] * len(times),
                 [offset - 5] * len(times),
                 color="gray",
                 alpha=0.5,
             )
+
+            bx.plot(
+                times,
+                fp_yval + fp_offset,
+                color=colors_dict[key],
+                alpha=0.5,
+            )
+            # bx.plot(times, [np.mean(fp_yval) + fp_offset] * len(times), "k--")
+            bx.fill_between(
+                times,
+                [np.mean(fp_yval) + fp_offset - 2 * np.std(fp_yval)] * len(times),
+                [np.mean(fp_yval) + fp_offset + 2 * np.std(fp_yval)] * len(times),
+                color="gray",
+                alpha=0.25,
+            )
     for key, value in offset_dict.items():
-        plt.text(max_time, value, f"{key}")
-    plt.suptitle(f"{target}")
-    plt.xlabel("MJD")
-    plt.ylabel("Group Delay [um] (+offset)")
+        ax.text(max_time, value, f"{key}")
+        bx.text(max_time, value / 15 * 3 + 1, f"{key}")
+    fig1.suptitle(f"{target}")
+    fig2.suptitle(f"{target}")
+    ax.set_xlabel("MJD")
+    ax.set_ylabel("Group Delay [um] (+offset)")
+    bx.set_xlabel("MJD")
+    bx.set_ylabel("Fringe Peak / Mean(FP) ")
+    fig1.tight_layout()
     plt.tight_layout()
 
     if output_dir is not None and save_fig:
-        plt.savefig(f"{output_dir}/{target}_group_delay_lambda{wl}.pdf")
+        fig1.savefig(f"{output_dir}/{target}_group_delay_lambda{wl}.pdf")
+        fig2.savefig(f"{output_dir}/{target}_fringe_peak_lambda{wl}.pdf")
 
     if verbose > 1:
         plt.show()
@@ -308,7 +430,7 @@ if __name__ == "__main__":
     script, fdir = argv
 
     fnames = np.sort(glob(f"{fdir}/OBJ_CORR_FLUX*.fits"))
-    do_group_delay(fnames, 3.6, output_dir=None, verbose=2, save_fig=False)
+    do_obj_corr_plots(fnames, "LM", 3.6, output_dir=None, verbose=2, save_fig=False)
 
     exit()
 
