@@ -7,8 +7,10 @@ Script which contains primary logic for MATISSE QA.
 
 import json
 from glob import glob
+import numpy as np
 
-from load_files import load_opd, load_raw_int, find_sof
+from load_files import load_opd, load_phot_beams, load_raw_int, find_sof, load_spectrum
+from phot_plots import plot_spectra
 from waterfall import do_obj_corr_plots, do_waterfall
 from vis2_plots import plot_vis
 from t3_plots import plot_cphase
@@ -98,8 +100,10 @@ if __name__ == "__main__":
             print(f"Something wrong with {d} when plotting closure phases")
             continue
 
-        opd_files = glob(f"{d}/*OPD*00*.fits")
+        opd_files = np.sort(glob(f"{d}/*OPD*00*.fits"))
         objcorr_files = glob(f"{d}/*OBJ_CORR*.fits")
+        phot_files = np.sort(glob(f"{d}/*PHOT*00*.fits"))
+        spectra_files = np.sort(glob(f"{d}/*SPECTRUM*00*.fits"))
 
         try:
             print("Plotting group delay ... ")
@@ -118,11 +122,11 @@ if __name__ == "__main__":
         except:
             print("Something went wrong while plotting group delay...")
 
-        try:
+        if True:
             print("Processing OPDs...")
             opd_dict = load_opd(opd_files, verbose=verbose)
             plot_opd(data_dict, opd_dict, verbose=verbose, output_dir=formatted_outdir)
-        except:
+        else:
             print("Error processing OPDs")
 
         try:
@@ -132,6 +136,12 @@ if __name__ == "__main__":
             )
         except (KeyError, FileNotFoundError) as e:
             print("SOF file missing, skipping waterfall plots, ", e)
+
+        # phot_dict = load_phot_beams(phot_files, verbose=verbose)
+        spectral_dict = load_spectrum(spectra_files, verbose=verbose)
+        plot_spectra(
+            spectral_dict, verbose=verbose, save_fig=False, output_dir=formatted_outdir
+        )
 
     print("Now showing all targets that have been processed!")
     get_obs(db_name)

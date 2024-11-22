@@ -14,6 +14,7 @@ Specifically
 import numpy as np
 from astropy.io import fits
 from glob import glob
+import matplotlib.pyplot as plt
 
 
 def load_raw_int(fnames, verbose: int = 0):
@@ -139,29 +140,40 @@ def load_opd(fnames, verbose=0):
     if fnames is str:
         fnames = [fnames]
 
-    data = {}
+    data = {
+        k: {"time": [], "opd": [], "tels": []}
+        for k in ["oo", "ii", "io", "oi", "oo_phot", "ii_phot"]
+    }
 
+    custom_time = 0
     for f in fnames:
         x = fits.open(f)
-        time = x[3].data["mjd"]
         opd = x[3].data["opd"]
-
+        time = np.arange(custom_time, custom_time + len(opd), 1)  # x[3].data["time"]
+        print(custom_time, time[-1])
+        custom_time = time[-1] + 1
         sta_idx = x[3].data["sta_index"]
         bcd = "oo"
-        if "0002.fits" in f:
+        bcd_config = (
+            f"{x[0].header['ESO INS BCD1 ID']}-{x[0].header['ESO INS BCD2 ID']}".lower()
+        )
+
+        if "0002.fits" in f or bcd_config == "in-in":
             bcd = "ii"
-        elif "0003.fits" in f:
+        elif "0003.fits" in f or bcd_config == "in-out":
             bcd = "io"
-        elif "0004.fits" in f:
+        elif "0004.fits" in f or bcd_config == "out-in":
             bcd = "oi"
-        elif "0005.fits" in f:
+        elif "0005.fits" in f or (bcd_config == "out-out" and "0011.fits" in f):
             bcd = "oo_phot"
-        elif "0006.fits" in f:
+        elif "0006.fits" in f or (bcd_config == "in-in" and "0012.fits" in f):
             bcd = "ii_phot"
 
         sta_pairs = [(sta_idx[0][i], sta_idx[0][i + 1]) for i in range(0, 12, 2)]
 
-        data[bcd] = {"time": time, "opd": opd, "tel": sta_pairs}
+        data[bcd]["time"].append(time)
+        data[bcd]["opd"].append(opd)
+        data[bcd]["tels"].append(sta_pairs)
 
     return data
 
@@ -170,9 +182,110 @@ def find_sof(fdir, tpl):
     # search in this fdir for a file with extension .sof that matches the tpl
     time = tpl.replace("_", ":")
     files = glob(f"{fdir}/*mat_raw_estimates*.sof")
-    print(files, time)
     for file in files:
         if time in file:
             return file
 
     raise FileNotFoundError
+
+
+def load_phot_beams(fnames, verbose=0):
+    """
+    If fname is a single file load it, if fname is an array of files, load each.
+    In both cases, return a data_dictionary (or pandas dataframe?)
+    """
+    if fnames is str:
+        fnames = [fnames]
+
+    data = {
+        k: {"time": [], "fluxes": [], "tels": []}
+        for k in ["oo", "ii", "io", "oi", "oo_phot", "ii_phot"]
+    }
+
+    custom_time = 0
+    for f in fnames:
+        x = fits.open(f)
+
+        test = x[1].data["datanosky1"][0]
+        fig = plt.figure()
+        plt.imshow(test, origin="lower")
+        plt.show()
+
+        exit()
+
+        time = np.arange(custom_time, custom_time + len(opd), 1)  # x[3].data["time"]
+        print(custom_time, time[-1])
+        custom_time = time[-1] + 1
+
+        sta_idx = x[3].data["sta_index"]
+
+        bcd_config = (
+            f"{x[0].header['ESO INS BCD1 ID']}-{x[0].header['ESO INS BCD2 ID']}".lower()
+        )
+
+        bcd = "oo"
+        if "0002.fits" in f or bcd_config == "in-in":
+            bcd = "ii"
+        elif "0003.fits" in f or bcd_config == "in-out":
+            bcd = "io"
+        elif "0004.fits" in f or bcd_config == "out-in":
+            bcd = "oi"
+        elif "0005.fits" in f or (bcd_config == "out-out" and "0011.fits" in f):
+            bcd = "oo_phot"
+        elif "0006.fits" in f or (bcd_config == "in-in" and "0012.fits" in f):
+            bcd = "ii_phot"
+
+        sta_pairs = [(sta_idx[0][i], sta_idx[0][i + 1]) for i in range(0, 12, 2)]
+
+        data[bcd]["time"].append(time)
+        data[bcd]["opd"].append(opd)
+        data[bcd]["tels"].append(sta_pairs)
+
+    return data
+
+
+def load_spectrum(fnames, verbose=0):
+    """
+    If fname is a single file load it, if fname is an array of files, load each.
+    In both cases, return a data_dictionary (or pandas dataframe?)
+    """
+    if fnames is str:
+        fnames = [fnames]
+
+    data = {
+        k: {"time": [], "spectra": [], "spectra_err": [], "tels": [], "wls": []}
+        for k in ["oo", "ii", "io", "oi", "oo_phot", "ii_phot"]
+    }
+
+    custom_time = 0
+    for f in fnames:
+        x = fits.open(f)
+
+        print(x[3].header)
+        print(x[4].header)
+        #'oi_wavelength'
+        #'oi_flux'
+        wls = x["oi_wavelength"].data["eff_wave"]
+        fluxes = x["oi_flux"].data["fluxdata"]
+        fluxerr = x["oi_flux"].data["fluxerr"]
+        tels = x["oi_flux"].data["sta_index"]
+        print(tels)
+        print(fluxes.shape)
+
+        is_chopping = x[0].header["eso iss chop st"] == "T"
+        bcd_config = f"{x[0].header['ESO INS BCD1 ID'][0]}{x[0].header['ESO INS BCD2 ID'][0]}".lower()
+        # TODO: figure out chopping status from header
+
+        bcd = bcd_config
+        if is_chopping:
+            bcd += "_phot"
+
+        print(bcd)
+
+        data[bcd]["time"].append(custom_time)
+        data[bcd]["spectra"].append(fluxes)
+        data[bcd]["spectra_err"].append(fluxerr)
+        data[bcd]["tels"].append(tels)
+        data[bcd]["wls"].append(wls)
+        custom_time += 1
+    return data

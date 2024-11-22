@@ -266,7 +266,7 @@ def _basic_waterfall(
             slc /= np.max(slc)
             slices[key].append(slc.flatten())
 
-    _, axarr = plt.subplots(1, 6)
+    _, axarr = plt.subplots(1, 6, sharey=True, figsize=(8.5, 8.5))
     for idx, (key, value) in enumerate(slices.items()):
         axarr.flatten()[idx].imshow(
             np.array(value),
@@ -282,6 +282,7 @@ def _basic_waterfall(
     axarr.flatten()[0].set_ylabel("Time [increasing downward]")
     axarr.flatten()[0].set_xlabel("OPD")
     plt.tight_layout()
+    plt.subplots_adjust(hspace=0.05, wspace=0.05)
 
     if output_dir is not None and save_fig:
         plt.savefig(
