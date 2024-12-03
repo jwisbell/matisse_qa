@@ -266,27 +266,27 @@ def _basic_waterfall(
             slc /= np.max(slc)
             slices[key].append(slc.flatten())
 
-    _, axarr = plt.subplots(1, 6, sharey=True, figsize=(8.5, 8.5))
+    _, axarr = plt.subplots(1, 6, sharey=True, figsize=(4.5, 4.5))
     for idx, (key, value) in enumerate(slices.items()):
         axarr.flatten()[idx].imshow(
             np.array(value),
             origin="upper",
             interpolation="bilinear",
-            cmap="rainbow",
+            cmap="viridis",
             vmin=-0.1,
             vmax=1,
         )
     plt.suptitle(
-        f"{targname} @ {tpl}\n(BCD:{bcd} starting MJD {mjds[0]:.4f}, chopping={is_chopping}) "
+        f"{targname} @ {tpl}\n(BCD:{bcd}  MJD: {mjds[0]:.4f}, chopping={is_chopping}) "
     )
     axarr.flatten()[0].set_ylabel("Time [increasing downward]")
     axarr.flatten()[0].set_xlabel("OPD")
     plt.tight_layout()
-    plt.subplots_adjust(hspace=0.05, wspace=0.05)
+    plt.subplots_adjust(hspace=0.01, wspace=0.01)
 
     if output_dir is not None and save_fig:
         plt.savefig(
-            f"{output_dir}/{targname}_waterfall_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.pdf"
+            f"{output_dir}/{targname}_waterfall_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.png"
         )
 
     if verbose > 1:
@@ -338,10 +338,11 @@ def do_obj_corr_plots(files, band, wl, output_dir, verbose, save_fig):
         "t3t4": 75,
     }
 
-    fig1, ax = plt.subplots(figsize=(11, 8.5))
-    fig2, bx = plt.subplots(figsize=(11, 8.5))
+    fig1, ax = plt.subplots(figsize=(8.5, 8.5))
+    fig2, bx = plt.subplots(figsize=(8.5, 8.5))
     max_time = 0
     for entry in all_vals:
+        # TODO : make mock times...
         times = entry["times"]
         if np.max(times) > max_time:
             max_time = np.max(times)
@@ -350,20 +351,21 @@ def do_obj_corr_plots(files, band, wl, output_dir, verbose, save_fig):
         target = entry["target"]
         bcd = entry["bcd"]
         ax.text(times[0], 80, f"{bcd}")
-        bx.text(times[0], 16.5, f"{bcd}")
+        bx.text(times[0], 11.5, f"{bcd}")
         for key, val in gd_vals["out-out"].items():
             offset = offset_dict[key]
 
             fp_yval = np.array(fp_vals["out-out"][key])
             # fp_yval -= np.min(fp_yval)
             fp_yval /= np.mean(fp_yval)
-            fp_offset = offset_dict[key] / 15 * 3
+            fp_offset = offset_dict[key] / 15 * 2
 
-            ax.plot(
+            ax.scatter(
                 times,
                 np.array(val) + offset,
                 color=colors_dict[key],
                 alpha=0.5,
+                marker=".",
             )
             ax.plot(times, [offset] * len(times), "k--")
             ax.fill_between(
@@ -374,11 +376,12 @@ def do_obj_corr_plots(files, band, wl, output_dir, verbose, save_fig):
                 alpha=0.5,
             )
 
-            bx.plot(
+            bx.scatter(
                 times,
                 fp_yval + fp_offset,
                 color=colors_dict[key],
                 alpha=0.5,
+                marker=".",
             )
             # bx.plot(times, [np.mean(fp_yval) + fp_offset] * len(times), "k--")
             bx.fill_between(
@@ -390,7 +393,7 @@ def do_obj_corr_plots(files, band, wl, output_dir, verbose, save_fig):
             )
     for key, value in offset_dict.items():
         ax.text(max_time, value, f"{key}")
-        bx.text(max_time, value / 15 * 3 + 1, f"{key}")
+        bx.text(max_time, value / 15 * 2 + 1, f"{key}")
     fig1.suptitle(f"{target}")
     fig2.suptitle(f"{target}")
     ax.set_xlabel("MJD")
@@ -401,8 +404,8 @@ def do_obj_corr_plots(files, band, wl, output_dir, verbose, save_fig):
     plt.tight_layout()
 
     if output_dir is not None and save_fig:
-        fig1.savefig(f"{output_dir}/{target}_group_delay_lambda{wl}.pdf")
-        fig2.savefig(f"{output_dir}/{target}_fringe_peak_lambda{wl}.pdf")
+        # fig1.savefig(f"{output_dir}/{target}_group_delay_lambda{wl}.png")
+        fig2.savefig(f"{output_dir}/{target}_fringe_peak_lambda{wl}.png")
 
     if verbose > 1:
         plt.show()

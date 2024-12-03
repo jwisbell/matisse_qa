@@ -58,12 +58,15 @@ def load_raw_int(fnames, verbose: int = 0):
             "phot_wl": [],
             "bcd": [],
         },
-        "inst": {"bcd": [], "tpl": "", "targname": ""},
+        "inst": {"bcd": [], "tpl": "", "targname": "", "band": "N"},
     }
 
-    # TODO: extract detector name
-
     for f in fnames:
+        band = "N"
+        if "HAWAII" in f:
+            band = "LM"
+
+        data["inst"]["band"] = band
         x = fits.open(f)
         print(f"\t\t {f}")
         data["inst"]["tpl"] = x[0].header["eso tpl start"]
@@ -91,9 +94,11 @@ def load_raw_int(fnames, verbose: int = 0):
             bcd = "ii_phot"
 
         oi_key = "OI_VIS"
-        # print(x[0].header.keys )
+        print(x[oi_key].header.keys)
         for i, val in enumerate(x[oi_key].data["visamp"]):
             data["vis"]["cflux"].append(val)
+            data["vis"]["diff_phase"].append(x[oi_key].data["visphi"][i])
+            data["vis"]["diff_phase_err"].append(x[oi_key].data["visphierr"][i])
             data["vis"]["u"].append(x[oi_key].data["ucoord"][i])
             data["vis"]["v"].append(x[oi_key].data["vcoord"][i])
             data["vis"]["cflux_err"].append(x[oi_key].data["visamperr"][i])
@@ -269,6 +274,8 @@ def load_spectrum(fnames, verbose=0):
         fluxes = x["oi_flux"].data["fluxdata"]
         fluxerr = x["oi_flux"].data["fluxerr"]
         tels = x["oi_flux"].data["sta_index"]
+        data["targname"] = x[0].header["eso obs targ name"].strip().replace(" ", "")
+        print(data["targname"], "targname")
         print(tels)
         print(fluxes.shape)
 

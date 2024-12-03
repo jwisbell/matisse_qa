@@ -33,6 +33,7 @@ def plot_cphase(
     """
     data_dict = data_dict_all["cphase"]
     targname = data_dict_all["inst"]["targname"]
+    band = data_dict_all["inst"]["band"]
 
     fig1, axarr1 = plt.subplots(2, 4, figsize=(11, 8.5))
     fig2, axarr2 = plt.subplots(1, 2, figsize=(8.5, 4.25))
@@ -62,10 +63,12 @@ def plot_cphase(
         ydata = data_dict["t3phi"][i]
         yerr = data_dict["t3phi_err"][i]
         ydata = bcd_flip(ydata, sta, bcd)
-
         xdata = data_dict["wl_t3"][i] * 1e6
 
-        s = np.where(np.logical_and(xdata > 4.1, xdata < 4.5))[0]
+        s = np.where(np.logical_and(xdata > 4.0, xdata < 4.5))[0]
+        if band == "N":
+            # s = np.where(np.logical_and(xdata > 13.0, xdata < 7.5))[0]
+            s = []  # no wavelengths to mask
         ydata[s] = np.nan
 
         zdata = [pa] * len(xdata)
@@ -93,6 +96,7 @@ def plot_cphase(
             color="k",
             alpha=0.1,
             zorder=0,
+            errorevery=10,
         )
         axarr1.flatten()[j % 4].set_ylim([-180, 180])
 
@@ -136,6 +140,7 @@ def plot_cphase(
             color="k",
             alpha=0.25,
             zorder=0,
+            errorevery=10,
         )
 
         axarr2[1].scatter(
@@ -158,6 +163,7 @@ def plot_cphase(
             color="k",
             alpha=0.25,
             zorder=0,
+            errorevery=10,
         )
         axarr2.flatten()[0].set_ylim([-180, 180])
         axarr2.flatten()[1].set_ylim([-30, 30])
@@ -173,6 +179,7 @@ def plot_cphase(
                 color="r",
                 alpha=0.9,
                 zorder=3,
+                errorevery=10,
             )
             axarr1.flatten()[i + 4].errorbar(
                 xdata,
@@ -183,6 +190,7 @@ def plot_cphase(
                 color="r",
                 alpha=0.9,
                 zorder=3,
+                errorevery=10,
             )
         except:
             continue

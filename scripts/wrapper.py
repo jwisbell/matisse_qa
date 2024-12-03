@@ -139,9 +139,16 @@ if __name__ == "__main__":
 
         # phot_dict = load_phot_beams(phot_files, verbose=verbose)
         spectral_dict = load_spectrum(spectra_files, verbose=verbose)
-        plot_spectra(
-            spectral_dict, verbose=verbose, save_fig=False, output_dir=formatted_outdir
-        )
+        print(spectral_dict, "test")
+        try:
+            plot_spectra(
+                spectral_dict,
+                verbose=verbose,
+                save_fig=save_fig,
+                output_dir=formatted_outdir,
+            )
+        except (KeyError, ValueError) as e:
+            print(f"Something went wrong while creating the spectral plots... {e}")
 
     print("Now showing all targets that have been processed!")
     get_obs(db_name)

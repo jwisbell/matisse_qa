@@ -35,10 +35,16 @@ def plot_spectra(
         vmin=0,
         vmax=12,  # np.max([np.max(x) for x in data_dict["oo"]["time"]])
     )
+    targname = data_dict["targname"]
+    mywls = 0
+    maxflux = 0
     for key, value in data_dict.items():
+        if key == "targname":
+            continue
         fluxes = value["spectra"]
         fluxerr = value["spectra_err"]
         wls = np.array(value["wls"])
+        mywls = wls
         tels = value["tels"]
         time = value["time"]
 
@@ -46,10 +52,11 @@ def plot_spectra(
         for idx in range(len(fluxes)):
             for jdx, t in enumerate(tels[idx]):
                 axarr.flatten()[mapping[t]].plot(
-                    wls[idx] * 1e6, fluxes[idx][jdx], color=color
+                    wls[idx] * 1e6, fluxes[idx][jdx], color=color, label=key
                 )
                 axarr.flatten()[mapping[t]].set_xticklabels("")
-
+                if np.max(fluxes[idx][jdx]) > maxflux:
+                    maxflux = np.max(fluxes[idx][jdx])
                 tel_stats[mapping[t]].append(fluxes[idx][jdx])
                 im = axarr.flatten()[-1].scatter(
                     wls[idx] * 1e6,
@@ -86,16 +93,29 @@ def plot_spectra(
         test,
         origin="lower",
     )
-    print(t1.shape)
+    print(data_dict)
+    print(mywls, "here")
     axarr.flatten()[-2].set(
         xticks=np.linspace(0, t1.shape[1], 7),
         xticklabels=[
-            f"{x:.1f}" for x in np.linspace(np.min(wls), np.max(wls), 7) * 1e6
+            f"{x:.1f}" for x in np.linspace(np.min(mywls), np.max(mywls), 7) * 1e6
         ],
     )
     axarr.flatten()[-2].set_ylabel("Time")
     axarr.flatten()[-2].set_xlabel("Wavelength")
     axarr.flatten()[-1].set_xlabel("Wavelength")
+
+    axarr.flatten()[0].set_title("UT1")
+    axarr.flatten()[1].set_title("UT2")
+    axarr.flatten()[2].set_title("UT3")
+    axarr.flatten()[3].set_title("UT4")
+    axarr.flatten()[0].legend(fontsize="small", ncol=2)
+
+    axarr.flatten()[0].set_ylim(0, maxflux)
+    axarr.flatten()[1].set_ylim(0, maxflux)
+    axarr.flatten()[2].set_ylim(0, maxflux)
+    axarr.flatten()[3].set_ylim(0, maxflux)
+    axarr.flatten()[-1].set_ylim(0, maxflux)
 
     h = t1.shape[0]
     spc = 5
@@ -104,6 +124,14 @@ def plot_spectra(
     axarr.flatten()[-2].text(5, h * 3 - spc * 1 + 0, "UT3")
     axarr.flatten()[-2].text(5, h * 4 - spc * 1 + 0, "UT4")
 
-    plt.show()
+    plt.tight_layout()
+
+    if output_dir is not None and save_fig:
+        plt.savefig(f"{output_dir}/{targname}_singledish_spectra.png")
+
+    if verbose > 1:
+        plt.show()
+
+    plt.close("all")
 
     return None

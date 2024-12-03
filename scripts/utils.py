@@ -26,7 +26,7 @@ bcd_marker_dict = {
 }
 bcd_color_dict = {
     "oo": "dodgerblue",
-    "ii": "red",
+    "ii": "firebrick",
     "oi": "green",
     "io": "orange",
     "oo_phot": "black",
@@ -64,4 +64,3 @@ def bcd_flip(ydata, sta_triplet, bcd):
         return -1 * ydata
 
     return ydata
-

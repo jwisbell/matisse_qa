@@ -16,13 +16,19 @@ def plot_opd(data_dict, opd_dict, save_fig=True, verbose=0, output_dir=None):
     fig1, axarr = plt.subplots(
         6,
         2,
-        figsize=(11, 8.5),
+        figsize=(8.5, 8.5),
         sharex=False,
         gridspec_kw={"width_ratios": [4, 1]},
         sharey=True,
     )
-    fig2, axarr2 = plt.subplots(6, 1, figsize=(11, 8.5), sharex=True)
+    fig2, axarr2 = plt.subplots(6, 1, figsize=(8.5, 8.5), sharex=True)
     targname = data_dict["inst"]["targname"]
+    band = data_dict["inst"]["band"]
+    yscale = 35
+    y2scale = 15
+    if band == "N":
+        yscale = 50
+        y2scale = 30
 
     baselines = {k: [] for k in range(6)}
 
@@ -41,27 +47,41 @@ def plot_opd(data_dict, opd_dict, save_fig=True, verbose=0, output_dir=None):
                 std = np.nanstd(opds[:, idx])
                 mn = np.nanmean(opds[:, idx])
                 print(times[0], mn, std, "here")
-                axarr[sta_idx, 0].plot(times, opds[:, idx], color=bcd_color_dict[bcd])
+                axarr[sta_idx, 0].scatter(
+                    times,
+                    opds[:, idx],
+                    color=bcd_color_dict[bcd],
+                    label=bcd,
+                    marker=".",
+                )
                 axarr[sta_idx, 0].fill_between(
                     times, mn - std, mn + std, color="lightgray", alpha=0.5
                 )
                 s = np.where(np.abs(opds[:, idx] - mn) > (2 * std))
-                axarr[sta_idx, 0].scatter(times[s], opds[:, idx][s], color="r")
-                axarr2.flatten()[sta_idx].plot(
-                    times[1:], np.abs(np.diff(opds[:, idx])), color=bcd_color_dict[bcd]
+                axarr[sta_idx, 0].scatter(
+                    times[s], opds[:, idx][s], color="r", marker="x"
+                )
+                axarr2.flatten()[sta_idx].scatter(
+                    times[1:],
+                    np.abs(np.diff(opds[:, idx])),
+                    color=bcd_color_dict[bcd],
+                    label=bcd,
                 )
 
+    axarr2.flatten()[-1].legend(fontsize="small", ncol=2)
+    axarr.flatten()[-2].legend(fontsize="small", ncol=2)
+    bins = np.linspace(-yscale, yscale, 25)
     for k, v in baselines.items():
         vals = np.array([])
         for entry in v:
             vals = np.append(vals, entry)
-        axarr[k, 1].hist(vals, bins=25, orientation="horizontal", density=True)
+        axarr[k, 1].hist(vals, bins=bins, orientation="horizontal", density=True)
 
     for ax in axarr[:, 0]:
-        ax.set_ylim([-35, 35])
+        ax.set_ylim([-yscale, yscale])
 
     for ax in axarr2.flatten():
-        ax.set_ylim([0, 15])
+        ax.set_ylim([0, y2scale])
 
     axarr.flatten()[-2].set_xlabel("Time [MJD]")
     axarr.flatten()[-2].set_ylabel("OPD [micron]")
