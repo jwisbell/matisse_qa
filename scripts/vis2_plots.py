@@ -61,7 +61,7 @@ def plot_vis(
 
         if band == "N":
             yupper = np.nanmax(data_dict["cflux"])
-            normvis = mpl.colors.Normalize(vmin=0, vmax=yupper)
+        normvis = mpl.colors.Normalize(vmin=0, vmax=yupper)
 
         bl_lengths[idx].append(bl)
         pa = np.degrees(np.arctan2(v, u))
@@ -170,7 +170,7 @@ def plot_vis(
 
         if band == "N":
             yupper = np.nanmax(data_dict["vis2"])
-            normvis = mpl.colors.Normalize(vmin=0, vmax=yupper)
+        normvis = mpl.colors.Normalize(vmin=0, vmax=yupper)
 
         bl_lengths[idx].append(bl)
         pa = np.degrees(np.arctan2(v, u))
@@ -362,7 +362,9 @@ def plot_vis(
 
     for i in range(6):
         label = "in-in"
-        yupper = np.nanmax(bcd_sorted[0])
+        yupper = 1.1
+        if band == "N":
+            yupper = np.nanmax(bcd_sorted[0])
         if i != 0:
             label = None
         axarr3.flatten()[i].errorbar(

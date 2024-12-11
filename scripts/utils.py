@@ -33,6 +33,15 @@ bcd_color_dict = {
     "ii_phot": "mediumorchid",
 }
 
+bcd_color_dict_long = {
+    "out-out": "dodgerblue",
+    "in-in": "firebrick",
+    "out-in": "green",
+    "in-out": "orange",
+    "out-out_phot": "black",
+    "in-in_phot": "mediumorchid",
+}
+
 
 def baseline_idx_from_stapair(sta_pair):
     return _ut_mapping[str(np.sort(sta_pair))]

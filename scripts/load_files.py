@@ -94,7 +94,6 @@ def load_raw_int(fnames, verbose: int = 0):
             bcd = "ii_phot"
 
         oi_key = "OI_VIS"
-        print(x[oi_key].header.keys)
         for i, val in enumerate(x[oi_key].data["visamp"]):
             data["vis"]["cflux"].append(val)
             data["vis"]["diff_phase"].append(x[oi_key].data["visphi"][i])

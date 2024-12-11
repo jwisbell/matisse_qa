@@ -26,6 +26,7 @@ if __name__ == "__main__":
     data_dir = cf["data_dir"]
     output_dir = cf["output_dir"]
     verbose = int(cf["verbose"])  # > 0
+    opd_cutoff = int(cf["opd_cutoff"])
     save_fig = True
 
     db_name = f"{output_dir}/all_obs.db"
@@ -45,9 +46,13 @@ if __name__ == "__main__":
         print("\n\n" + "#" * 128)
         print(f"Working on {d}")
         try:
-            print(f"Loading files ... ")
+            print("Loading files ... ")
             data_dict = load_raw_int(files, verbose=verbose)
-            print(f"Files loaded successfully!")
+            opd_files = np.sort(glob(f"{d}/*OPD*00*.fits"))
+            objcorr_files = glob(f"{d}/*OBJ_CORR*.fits")
+            phot_files = np.sort(glob(f"{d}/*PHOT*00*.fits"))
+            spectra_files = np.sort(glob(f"{d}/*SPECTRUM*00*.fits"))
+            print("Files loaded successfully!")
         except:
             print(f"No files found in {d}")
             continue
@@ -59,6 +64,8 @@ if __name__ == "__main__":
         tpl_start = data_dict["inst"]["tpl"]
         formatted_outdir = f"{output_dir}/{tpl_start.replace(':','_')}/"
         print(data_dict["inst"]["targname"])
+
+        # make the directories
         try:
             mkdir(formatted_outdir)
         except FileExistsError:
@@ -74,6 +81,21 @@ if __name__ == "__main__":
             db_name,
         )
 
+        # start with the opds so that a mask can be generated
+        if True:
+            print("Processing OPDs...")
+            opd_dict = load_opd(opd_files, verbose=verbose)
+            mask = plot_opd(
+                data_dict,
+                opd_dict,
+                verbose=verbose,
+                output_dir=formatted_outdir,
+                opd_cutoff=opd_cutoff,
+            )
+        else:
+            print("Error processing OPDs")
+
+        # plot the visibilities
         try:
             print(f"Plotting visibilities ... ")
             plot_vis(
@@ -100,13 +122,8 @@ if __name__ == "__main__":
             print(f"Something wrong with {d} when plotting closure phases")
             continue
 
-        opd_files = np.sort(glob(f"{d}/*OPD*00*.fits"))
-        objcorr_files = glob(f"{d}/*OBJ_CORR*.fits")
-        phot_files = np.sort(glob(f"{d}/*PHOT*00*.fits"))
-        spectra_files = np.sort(glob(f"{d}/*SPECTRUM*00*.fits"))
-
         try:
-            print("Plotting group delay ... ")
+            print("Plotting fringe peaks ... ")
             mywl = 3.6
             if band == "N":
                 mywl = 8.5
@@ -118,16 +135,8 @@ if __name__ == "__main__":
                 wl=mywl,
                 save_fig=save_fig,
             )
-            print("Closure phases plotted successfully!")
         except:
             print("Something went wrong while plotting group delay...")
-
-        if True:
-            print("Processing OPDs...")
-            opd_dict = load_opd(opd_files, verbose=verbose)
-            plot_opd(data_dict, opd_dict, verbose=verbose, output_dir=formatted_outdir)
-        else:
-            print("Error processing OPDs")
 
         try:
             sof = find_sof(data_dir, tpl_start)
@@ -137,7 +146,6 @@ if __name__ == "__main__":
         except (KeyError, FileNotFoundError) as e:
             print("SOF file missing, skipping waterfall plots, ", e)
 
-        # phot_dict = load_phot_beams(phot_files, verbose=verbose)
         spectral_dict = load_spectrum(spectra_files, verbose=verbose)
         print(spectral_dict, "test")
         try:
@@ -150,5 +158,10 @@ if __name__ == "__main__":
         except (KeyError, ValueError) as e:
             print(f"Something went wrong while creating the spectral plots... {e}")
 
+        # phot_dict = load_phot_beams(phot_files, verbose=verbose)
+        # then plot the photometries
+        #
+        #
+        #
     print("Now showing all targets that have been processed!")
     get_obs(db_name)

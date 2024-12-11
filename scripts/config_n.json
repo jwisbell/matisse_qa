@@ -1,0 +1,6 @@
+{
+  "data_dir": "/Users/jwisbell/Documents/matisse/cena/processeddata/nband/c200b11/",
+  "output_dir": "/Users/jwisbell/Documents/matisse/cena/processeddata/test/nband/",
+  "verbose": "1",
+  "opd_cutoff": 3
+}
