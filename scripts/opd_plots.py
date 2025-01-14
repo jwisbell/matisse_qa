@@ -30,7 +30,7 @@ def _compute_mask_stats(masks, cutoff=3):
     final_mask = []
     for idx, val in counts.items():
         if val >= cutoff:
-            print(idx, val)
+            # print(idx, val)
             final_mask.append(idx)
 
     return final_mask

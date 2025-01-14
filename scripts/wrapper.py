@@ -138,16 +138,22 @@ if __name__ == "__main__":
         except:
             print("Something went wrong while plotting group delay...")
 
+        sof = ""
         try:
             sof = find_sof(data_dir, tpl_start)
+            print(sof)
+        except:
+            print("SOF not found... ")
+
+        if len(sof) > 0:  # True:
             do_waterfall(
                 sof, output_dir=formatted_outdir, verbose=verbose, save_fig=save_fig
             )
-        except (KeyError, FileNotFoundError) as e:
-            print("SOF file missing, skipping waterfall plots, ", e)
+        else:  # except (KeyError, FileNotFoundError) as e:
+            print("SOF file missing, skipping waterfall plots, ")
 
         spectral_dict = load_spectrum(spectra_files, verbose=verbose)
-        print(spectral_dict, "test")
+        # print(spectral_dict, "test")
         try:
             plot_spectra(
                 spectral_dict,

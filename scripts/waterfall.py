@@ -2,6 +2,7 @@ import numpy as np
 from astropy.io import fits
 import matplotlib.pyplot as plt
 from glob import glob
+from scipy.ndimage import median_filter
 
 from utils import bcd_color_dict_long as bcd_color_dict
 
@@ -306,11 +307,29 @@ def argmax2d(arr):
     return s[1], s[0]
 
 
+def extract_fluxes(tel_arr, wl=3.7e-6):
+    # extract the spectrum from the photometric channel and return the mean value
+    # eventually return flux at a certain wl?
+    return_vals = []
+    w = 1
+    for idx, t in enumerate(tel_arr):
+        im = median_filter(t, 3)
+        bias = np.nanmedian(im[:20, :20])
+        slice = im[80, :]
+        x = np.argmax(slice)
+        spectrum = np.nanmedian(t[:, x - w : x + w], 1)
+        val = spectrum - bias
+        return_vals.append(val)
+
+    return return_vals
+
+
 def _basic_waterfall(
     targ, sky_files, output_dir: str = "/.", save_fig: bool = False, verbose: int = 0
 ):
     # using rudimentary bad pixel correction and sky subtraction, use the raw interferogram to
     # make a waterfall plot for the set of exposures in the targ file
+    # edit to also show the photometric values over time
     xf = fits.open(targ)
     ext = "imaging_data"
 
@@ -333,9 +352,22 @@ def _basic_waterfall(
     slices = {k: [] for k in lm_raw_slice_locs if k != "7"}
     w = 10
 
+    all_fluxes = [[], [], [], []]
+
     # load each interferogram and process it
     for i in range(len(xf[ext].data)):
         interferogram = xf[ext].data[i][11]
+        t1 = xf[ext].data[i][9]
+        t2 = xf[ext].data[i][10]
+        t3 = xf[ext].data[i][12]
+        t4 = xf[ext].data[i][13]
+
+        fluxes = extract_fluxes([t1, t2, t3, t4])
+        all_fluxes[0].append(fluxes[0])
+        all_fluxes[1].append(fluxes[1])
+        all_fluxes[2].append(fluxes[2])
+        all_fluxes[3].append(fluxes[3])
+
         mjds.append(xf[ext].data[i][0])
 
         obs = np.array(interferogram - sky, dtype="float")
@@ -351,13 +383,15 @@ def _basic_waterfall(
         ft = np.fft.fftshift(np.fft.fft2(obs))
 
         for key, val in lm_raw_slice_locs.items():
+            if key == "7" or key == "8":
+                continue
             xc, yc = argmax2d(np.abs(ft)[60 - 5 : 60 + 5, val - 10 : val + 10])
             slc = np.abs(ft)[yc + 60 - 5, val - w : val + w]
             slc -= np.mean(slc)
             slc /= np.max(slc)
             slices[key].append(slc.flatten())
 
-    _, axarr = plt.subplots(1, 6, sharey=True, figsize=(4.5, 4.5))
+    fig1, axarr = plt.subplots(1, 6, sharey=True, figsize=(4.5, 4.5))
     for idx, (key, value) in enumerate(slices.items()):
         axarr.flatten()[idx].imshow(
             np.array(value),
@@ -367,23 +401,39 @@ def _basic_waterfall(
             vmin=-0.1,
             vmax=1,
         )
-    plt.suptitle(
+    fig1.suptitle(
         f"{targname} @ {tpl}\n(BCD:{bcd}  MJD: {mjds[0]:.4f}, chopping={is_chopping}) "
     )
     axarr.flatten()[0].set_ylabel("Time [increasing downward]")
     axarr.flatten()[0].set_xlabel("OPD")
-    plt.tight_layout()
-    plt.subplots_adjust(hspace=0.01, wspace=0.01)
+    fig1.tight_layout()
+    fig1.subplots_adjust(hspace=0.01, wspace=0.01)
+
+    fig2, axarr2 = plt.subplots(2, 2, sharey=True, figsize=(6.5, 6.5), sharex=True)
+    for idx, tel in enumerate(all_fluxes):
+        # disp_arr = np.zeros((len(tel), len(tel[0])))
+        for jdx, spectrum in enumerate(tel):
+            axarr2.flatten()[idx].scatter(
+                mjds[jdx], np.median(spectrum), color="k", marker="s"
+            )
+        axarr2.flatten()[idx].set_title(f"UT{idx+1}")
+        # disp_arr[jdx] = spectrum
+        # axarr2.flatten()[idx].imshow(disp_arr, origin="lower")
+
+    fig2.suptitle("Photometric flux")
 
     if output_dir is not None and save_fig:
-        plt.savefig(
+        fig1.savefig(
             f"{output_dir}/{targname}_waterfall_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.png"
+        )
+        fig2.savefig(
+            f"{output_dir}/{targname}_photometry_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.png"
         )
 
     if verbose > 1:
         plt.show()
-    plt.close("all")
 
+    plt.close("all")
     return None
 
 

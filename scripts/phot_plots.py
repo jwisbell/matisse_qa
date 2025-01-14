@@ -93,8 +93,8 @@ def plot_spectra(
         test,
         origin="lower",
     )
-    print(data_dict)
-    print(mywls, "here")
+    # print(data_dict)
+    # print(mywls, "here")
     axarr.flatten()[-2].set(
         xticks=np.linspace(0, t1.shape[1], 7),
         xticklabels=[

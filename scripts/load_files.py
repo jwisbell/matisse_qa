@@ -154,7 +154,7 @@ def load_opd(fnames, verbose=0):
         x = fits.open(f)
         opd = x[3].data["opd"]
         time = np.arange(custom_time, custom_time + len(opd), 1)  # x[3].data["time"]
-        print(custom_time, time[-1])
+        # print(custom_time, time[-1])
         custom_time = time[-1] + 1
         sta_idx = x[3].data["sta_index"]
         bcd = "oo"
@@ -265,8 +265,6 @@ def load_spectrum(fnames, verbose=0):
     for f in fnames:
         x = fits.open(f)
 
-        print(x[3].header)
-        print(x[4].header)
         #'oi_wavelength'
         #'oi_flux'
         wls = x["oi_wavelength"].data["eff_wave"]
@@ -274,9 +272,9 @@ def load_spectrum(fnames, verbose=0):
         fluxerr = x["oi_flux"].data["fluxerr"]
         tels = x["oi_flux"].data["sta_index"]
         data["targname"] = x[0].header["eso obs targ name"].strip().replace(" ", "")
-        print(data["targname"], "targname")
-        print(tels)
-        print(fluxes.shape)
+        # print(data["targname"], "targname")
+        # print(tels)
+        # print(fluxes.shape)
 
         is_chopping = x[0].header["eso iss chop st"] == "T"
         bcd_config = f"{x[0].header['ESO INS BCD1 ID'][0]}{x[0].header['ESO INS BCD2 ID'][0]}".lower()
@@ -286,7 +284,7 @@ def load_spectrum(fnames, verbose=0):
         if is_chopping:
             bcd += "_phot"
 
-        print(bcd)
+        # print(bcd)
 
         data[bcd]["time"].append(custom_time)
         data[bcd]["spectra"].append(fluxes)
