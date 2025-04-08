@@ -352,22 +352,30 @@ def _basic_waterfall(
     is_chopping = xf[0].header["eso iss chop st"] == "T"
 
     # calculate the mean sky
-    sky = np.mean([_calc_mean_sky(sf) for sf in sky_files], 0)
+    sky = np.mean([_calc_mean_sky(sf, band) for sf in sky_files], 0)
 
     slices = {k: [] for k in lm_raw_slice_locs if k != "7"}
     w = 10
 
     all_fluxes = [[], [], [], []]
-
     # load each interferogram and process it
     for i in range(len(xf[ext].data)):
-        interferogram = xf[ext].data[i][11]
-        t1 = xf[ext].data[i][9]
-        t2 = xf[ext].data[i][10]
-        t3 = xf[ext].data[i][12]
-        t4 = xf[ext].data[i][13]
+        # print(f"{i}/{len(xf[ext].data)}")
+        if band == "LM":
+            interferogram = xf[ext].data[i][11]
+            t1 = xf[ext].data[i][9]
+            t2 = xf[ext].data[i][10]
+            t3 = xf[ext].data[i][12]
+            t4 = xf[ext].data[i][13]
+            fluxes = extract_fluxes([t1, t2, t3, t4])
+        else:
+            interferogram = xf[ext].data["data5"][i]  # [11]
+            t1 = xf[ext].data["data4"]
+            t2 = xf[ext].data["data4"]
+            t3 = xf[ext].data["data6"]
+            t4 = xf[ext].data["data6"]
+            fluxes = [1, 1, 1, 1]
 
-        fluxes = extract_fluxes([t1, t2, t3, t4])
         all_fluxes[0].append(fluxes[0])
         all_fluxes[1].append(fluxes[1])
         all_fluxes[2].append(fluxes[2])
@@ -387,16 +395,28 @@ def _basic_waterfall(
 
         ft = np.fft.fftshift(np.fft.fft2(obs))
 
-        for key, val in lm_raw_slice_locs.items():
-            if key == "7" or key == "8":
-                continue
-            xc, yc = argmax2d(np.abs(ft)[60 - 5 : 60 + 5, val - 10 : val + 10])
-            slc = np.abs(ft)[yc + 60 - 5, val - w : val + w]
-            slc -= np.mean(slc)
-            slc /= np.max(slc)
-            slices[key].append(slc.flatten())
+        if band == "LM":
+            for key, val in lm_raw_slice_locs.items():
+                if key == "7" or key == "8":
+                    continue
+                xc, yc = argmax2d(np.abs(ft)[60 - 5 : 60 + 5, val - 10 : val + 10])
+                slc = np.abs(ft)[yc + 60 - 5, val - w : val + w]
+                slc -= np.mean(slc)
+                slc /= np.max(slc)
+                slices[key].append(slc.flatten())
+        else:
+            for key, val in n_raw_slice_locs.items():
+                if key == "7" or key == "8":
+                    continue
+                xc, yc = argmax2d(np.abs(ft)[60 - 5 : 60 + 5, val - 10 : val + 10])
+                w = 50
+                slc = np.abs(ft)[yc + 60 - 5, val - w : val + w]
+                slc -= np.mean(slc)
+                slc /= np.max(slc)
+                slices[key].append(slc.flatten())
 
-    fig1, axarr = plt.subplots(1, 6, sharey=True, figsize=(4.5, 4.5))
+    fig1, axarr = plt.subplots(1, 6, sharey=True, figsize=(10, 10))
+
     for idx, (key, value) in enumerate(slices.items()):
         axarr.flatten()[idx].imshow(
             np.array(value),
@@ -457,15 +477,17 @@ def _get_files_from_sof(sofname):
     return targ_files, sky_files
 
 
-def _calc_mean_sky(sky_file):
+def _calc_mean_sky(sky_file, band="LM"):
     # calculate the mean sky from the sky exposures
     sf = fits.open(sky_file)
     ext = "imaging_data"
 
     sky_vals = []
     for i in range(len(sf[ext].data)):
-        sky_vals.append(sf[ext].data[i][11])
-
+        if band == "LM":
+            sky_vals.append(sf[ext].data[i][11])
+        else:
+            sky_vals.append(sf[ext].data["data5"][i])
     return np.mean(sky_vals, 0)
 
 
@@ -598,6 +620,8 @@ def do_waterfall(sof, output_dir, verbose, save_fig):
     band = "N"
     if "HAWAII" in sof:
         band = "LM"
+
+    print(targ_files, sky_files)
 
     for tf in targ_files:
         _basic_waterfall(
