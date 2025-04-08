@@ -205,8 +205,8 @@ def plot_cphase(
     fig2.tight_layout()
 
     if output_dir is not None and save_fig:
-        fig1.savefig(f"{output_dir}/{targname}_t3_phi.png")
-        fig2.savefig(f"{output_dir}/{targname}_t3_phi_perimeter_spatialfreq.png")
+        fig1.savefig(f"{output_dir}/{targname}_{band}_t3_phi.png")
+        fig2.savefig(f"{output_dir}/{targname}_{band}_t3_phi_perimeter_spatialfreq.png")
 
     if verbose > 1:
         plt.show()

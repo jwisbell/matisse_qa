@@ -325,7 +325,12 @@ def extract_fluxes(tel_arr, wl=3.7e-6):
 
 
 def _basic_waterfall(
-    targ, sky_files, output_dir: str = "/.", save_fig: bool = False, verbose: int = 0
+    targ,
+    sky_files,
+    output_dir: str = "/.",
+    save_fig: bool = False,
+    verbose: int = 0,
+    band="LM",
 ):
     # using rudimentary bad pixel correction and sky subtraction, use the raw interferogram to
     # make a waterfall plot for the set of exposures in the targ file
@@ -347,22 +352,30 @@ def _basic_waterfall(
     is_chopping = xf[0].header["eso iss chop st"] == "T"
 
     # calculate the mean sky
-    sky = np.mean([_calc_mean_sky(sf) for sf in sky_files], 0)
+    sky = np.mean([_calc_mean_sky(sf, band) for sf in sky_files], 0)
 
     slices = {k: [] for k in lm_raw_slice_locs if k != "7"}
     w = 10
 
     all_fluxes = [[], [], [], []]
-
     # load each interferogram and process it
     for i in range(len(xf[ext].data)):
-        interferogram = xf[ext].data[i][11]
-        t1 = xf[ext].data[i][9]
-        t2 = xf[ext].data[i][10]
-        t3 = xf[ext].data[i][12]
-        t4 = xf[ext].data[i][13]
+        # print(f"{i}/{len(xf[ext].data)}")
+        if band == "LM":
+            interferogram = xf[ext].data[i][11]
+            t1 = xf[ext].data[i][9]
+            t2 = xf[ext].data[i][10]
+            t3 = xf[ext].data[i][12]
+            t4 = xf[ext].data[i][13]
+            fluxes = extract_fluxes([t1, t2, t3, t4])
+        else:
+            interferogram = xf[ext].data["data5"][i]  # [11]
+            t1 = xf[ext].data["data4"]
+            t2 = xf[ext].data["data4"]
+            t3 = xf[ext].data["data6"]
+            t4 = xf[ext].data["data6"]
+            fluxes = [1, 1, 1, 1]
 
-        fluxes = extract_fluxes([t1, t2, t3, t4])
         all_fluxes[0].append(fluxes[0])
         all_fluxes[1].append(fluxes[1])
         all_fluxes[2].append(fluxes[2])
@@ -382,16 +395,28 @@ def _basic_waterfall(
 
         ft = np.fft.fftshift(np.fft.fft2(obs))
 
-        for key, val in lm_raw_slice_locs.items():
-            if key == "7" or key == "8":
-                continue
-            xc, yc = argmax2d(np.abs(ft)[60 - 5 : 60 + 5, val - 10 : val + 10])
-            slc = np.abs(ft)[yc + 60 - 5, val - w : val + w]
-            slc -= np.mean(slc)
-            slc /= np.max(slc)
-            slices[key].append(slc.flatten())
+        if band == "LM":
+            for key, val in lm_raw_slice_locs.items():
+                if key == "7" or key == "8":
+                    continue
+                xc, yc = argmax2d(np.abs(ft)[60 - 5 : 60 + 5, val - 10 : val + 10])
+                slc = np.abs(ft)[yc + 60 - 5, val - w : val + w]
+                slc -= np.mean(slc)
+                slc /= np.max(slc)
+                slices[key].append(slc.flatten())
+        else:
+            for key, val in n_raw_slice_locs.items():
+                if key == "7" or key == "8":
+                    continue
+                xc, yc = argmax2d(np.abs(ft)[60 - 5 : 60 + 5, val - 10 : val + 10])
+                w = 50
+                slc = np.abs(ft)[yc + 60 - 5, val - w : val + w]
+                slc -= np.mean(slc)
+                slc /= np.max(slc)
+                slices[key].append(slc.flatten())
 
-    fig1, axarr = plt.subplots(1, 6, sharey=True, figsize=(4.5, 4.5))
+    fig1, axarr = plt.subplots(1, 6, sharey=True, figsize=(10, 10))
+
     for idx, (key, value) in enumerate(slices.items()):
         axarr.flatten()[idx].imshow(
             np.array(value),
@@ -424,10 +449,10 @@ def _basic_waterfall(
 
     if output_dir is not None and save_fig:
         fig1.savefig(
-            f"{output_dir}/{targname}_waterfall_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.png"
+            f"{output_dir}/{targname}_{band}_waterfall_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.png"
         )
         fig2.savefig(
-            f"{output_dir}/{targname}_photometry_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.png"
+            f"{output_dir}/{targname}_{band}_photometry_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.png"
         )
 
     if verbose > 1:
@@ -452,15 +477,17 @@ def _get_files_from_sof(sofname):
     return targ_files, sky_files
 
 
-def _calc_mean_sky(sky_file):
+def _calc_mean_sky(sky_file, band="LM"):
     # calculate the mean sky from the sky exposures
     sf = fits.open(sky_file)
     ext = "imaging_data"
 
     sky_vals = []
     for i in range(len(sf[ext].data)):
-        sky_vals.append(sf[ext].data[i][11])
-
+        if band == "LM":
+            sky_vals.append(sf[ext].data[i][11])
+        else:
+            sky_vals.append(sf[ext].data["data5"][i])
     return np.mean(sky_vals, 0)
 
 
@@ -575,8 +602,8 @@ def do_obj_corr_plots(files, band, wl, output_dir, verbose, save_fig):
 
     if output_dir is not None and save_fig:
         # fig1.savefig(f"{output_dir}/{target}_group_delay_lambda{wl}.png")
-        fig2.savefig(f"{output_dir}/{target}_fringe_peak_lambda{wl}.png")
-        fig3.savefig(f"{output_dir}/{target}_zero-order-fringe_lambda{wl}.png")
+        fig2.savefig(f"{output_dir}/{target}_{band}_fringe_peak_lambda{wl}.png")
+        fig3.savefig(f"{output_dir}/{target}_{band}_zero-order-fringe_lambda{wl}.png")
 
     if verbose > 1:
         plt.show()
@@ -590,10 +617,20 @@ def do_waterfall(sof, output_dir, verbose, save_fig):
     # the main script is responsible for finding the sof
 
     targ_files, sky_files = _get_files_from_sof(sof)
+    band = "N"
+    if "HAWAII" in sof:
+        band = "LM"
+
+    print(targ_files, sky_files)
 
     for tf in targ_files:
         _basic_waterfall(
-            tf, sky_files, output_dir=output_dir, verbose=verbose, save_fig=save_fig
+            tf,
+            sky_files,
+            output_dir=output_dir,
+            verbose=verbose,
+            save_fig=save_fig,
+            band=band,
         )
 
 

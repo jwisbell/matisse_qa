@@ -485,10 +485,10 @@ def plot_vis(
     fig4.tight_layout()
 
     if output_dir is not None and save_fig:
-        fig1.savefig(f"{output_dir}/{targname}_coher_vis.png")
-        fig2.savefig(f"{output_dir}/{targname}_incoher_vis.png")
-        fig3.savefig(f"{output_dir}/{targname}_bcd_compare_vis.png")
-        fig4.savefig(f"{output_dir}/{targname}_diff_phase.png")
+        fig1.savefig(f"{output_dir}/{targname}_{band}_coher_vis.png")
+        fig2.savefig(f"{output_dir}/{targname}_{band}_incoher_vis.png")
+        fig3.savefig(f"{output_dir}/{targname}_{band}_bcd_compare_vis.png")
+        fig4.savefig(f"{output_dir}/{targname}_{band}_diff_phase.png")
 
     if verbose > 1:
         plt.show()
