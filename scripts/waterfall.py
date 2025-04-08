@@ -325,7 +325,12 @@ def extract_fluxes(tel_arr, wl=3.7e-6):
 
 
 def _basic_waterfall(
-    targ, sky_files, output_dir: str = "/.", save_fig: bool = False, verbose: int = 0
+    targ,
+    sky_files,
+    output_dir: str = "/.",
+    save_fig: bool = False,
+    verbose: int = 0,
+    band="LM",
 ):
     # using rudimentary bad pixel correction and sky subtraction, use the raw interferogram to
     # make a waterfall plot for the set of exposures in the targ file
@@ -424,10 +429,10 @@ def _basic_waterfall(
 
     if output_dir is not None and save_fig:
         fig1.savefig(
-            f"{output_dir}/{targname}_waterfall_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.png"
+            f"{output_dir}/{targname}_{band}_waterfall_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.png"
         )
         fig2.savefig(
-            f"{output_dir}/{targname}_photometry_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.png"
+            f"{output_dir}/{targname}_{band}_photometry_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.png"
         )
 
     if verbose > 1:
@@ -575,8 +580,8 @@ def do_obj_corr_plots(files, band, wl, output_dir, verbose, save_fig):
 
     if output_dir is not None and save_fig:
         # fig1.savefig(f"{output_dir}/{target}_group_delay_lambda{wl}.png")
-        fig2.savefig(f"{output_dir}/{target}_fringe_peak_lambda{wl}.png")
-        fig3.savefig(f"{output_dir}/{target}_zero-order-fringe_lambda{wl}.png")
+        fig2.savefig(f"{output_dir}/{target}_{band}_fringe_peak_lambda{wl}.png")
+        fig3.savefig(f"{output_dir}/{target}_{band}_zero-order-fringe_lambda{wl}.png")
 
     if verbose > 1:
         plt.show()
@@ -590,10 +595,18 @@ def do_waterfall(sof, output_dir, verbose, save_fig):
     # the main script is responsible for finding the sof
 
     targ_files, sky_files = _get_files_from_sof(sof)
+    band = "N"
+    if "HAWAII" in sof:
+        band = "LM"
 
     for tf in targ_files:
         _basic_waterfall(
-            tf, sky_files, output_dir=output_dir, verbose=verbose, save_fig=save_fig
+            tf,
+            sky_files,
+            output_dir=output_dir,
+            verbose=verbose,
+            save_fig=save_fig,
+            band=band,
         )
 
 

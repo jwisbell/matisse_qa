@@ -36,6 +36,7 @@ def plot_spectra(
         vmax=12,  # np.max([np.max(x) for x in data_dict["oo"]["time"]])
     )
     targname = data_dict["targname"]
+    band = data_dict["inst"]["band"]
     mywls = 0
     maxflux = 0
     for key, value in data_dict.items():
@@ -127,7 +128,7 @@ def plot_spectra(
     plt.tight_layout()
 
     if output_dir is not None and save_fig:
-        plt.savefig(f"{output_dir}/{targname}_singledish_spectra.png")
+        plt.savefig(f"{output_dir}/{targname}_{band}_singledish_spectra.png")
 
     if verbose > 1:
         plt.show()
