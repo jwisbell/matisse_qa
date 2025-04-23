@@ -452,28 +452,31 @@ def plot_vis(
                 errorevery=10,
             )
 
-        axarr3.flatten()[i + 6].errorbar(
-            np.median(bcd_sorted[4][i], 0),
-            np.median(bcd_sorted[5][i], 0),
-            yerr=np.std(bcd_sorted[4][i], 0),
-            c="r",
-            zorder=1,
-            marker="o",
-            ls="none",
-            alpha=0.95,
-        )
-        for jdx in range(len(bcd_sorted[4][i])):
-            axarr3.flatten()[i].errorbar(
-                bcd_sorted[4][i][jdx],
-                bcd_sorted[5][i][jdx],
-                yerr=0,
-                color="gray",
-                zorder=0.5,
+        try:
+            axarr3.flatten()[i + 6].errorbar(
+                np.median(bcd_sorted[4][i], 0),
+                np.median(bcd_sorted[5][i], 0),
+                yerr=np.std(bcd_sorted[4][i], 0),
+                c="r",
+                zorder=1,
                 marker="o",
                 ls="none",
-                alpha=0.25,
-                errorevery=10,
+                alpha=0.95,
             )
+            for jdx in range(len(bcd_sorted[4][i])):
+                axarr3.flatten()[i + 6].errorbar(
+                    bcd_sorted[4][i + 6][jdx],
+                    bcd_sorted[5][i + 6][jdx],
+                    yerr=0,
+                    color="gray",
+                    zorder=0.5,
+                    marker="o",
+                    ls="none",
+                    alpha=0.25,
+                    errorevery=10,
+                )
+        except (IndexError, ValueError) as _:
+            print("WARNING: No chopping data for this source.")
 
         axarr3.flatten()[i].plot([0, 1.1], [0, 1.1], c="k", ls="--", zorder=0)
         axarr3.flatten()[i + 6].plot([0, 1.1], [0, 1.1], c="k", ls="--", zorder=0)
