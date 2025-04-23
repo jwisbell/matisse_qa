@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 _ut_mapping = {
     "[32 33]": 1,
@@ -16,6 +17,24 @@ _ut_triplet_mapping = {
     "[32 34 35]": 3,
 }
 
+bcd_magic_numbers = {
+    "L": {"oo": 0},
+    "N": {
+        "oo": {5: [0, 1], 2: [0, 1]},
+        "oi": {
+            4: [-52769.1174440545, 1.71871289158438],
+            3: [-68604.0869050424, 1.90429960230199],
+        },
+        "io": {
+            0: [-15776.0528733816, 1.2607215283921],
+            1: [-31184.7101419972, 1.43912074965831],
+        },
+        "ii": {
+            5: [-97803.7261954151, 2.30693829426419],
+            2: [-31974.458991784, 1.39183795726365],
+        },
+    },
+}
 bcd_marker_dict = {
     "oo": "o",
     "ii": "s",
@@ -73,3 +92,33 @@ def bcd_flip(ydata, sta_triplet, bcd):
         return -1 * ydata
 
     return ydata
+
+
+def export_dict_to_df(data_dict, outdir):
+    dfvis = pd.DataFrame.from_dict(data_dict["vis"])
+    dft3 = pd.DataFrame.from_dict(data_dict["cphase"])
+    dfphot = pd.DataFrame.from_dict(data_dict["phot"])
+    dfqc = pd.DataFrame.from_dict(data_dict["qcparams"])
+
+    inst = data_dict["inst"]
+    tpl = inst["tpl"]
+    targ = inst["targname"]
+    band = inst["band"]
+    visfname = f"{outdir}/{targ}_{tpl.replace(":","_")}_{band}band_vis_df.pkl"
+    t3fname = f"{outdir}/{targ}_{tpl.replace(":","_")}_{band}band_cphase_df.pkl"
+    photfname = f"{outdir}/{targ}_{tpl.replace(":","_")}_{band}band_phot_df.pkl"
+    qcfname = f"{outdir}/{targ}_{tpl.replace(":","_")}_{band}band_qc_df.pkl"
+
+    fnames = {"vis": visfname, "cphase": t3fname, "phot": photfname, "qc": qcfname}
+    parent_df = pd.DataFrame.from_dict({"files": fnames})
+    parent_fname = f"{outdir}/{targ}_{tpl.replace(":","_")}_{band}band_parent_df.pkl"
+
+    # TODO: save these
+
+    for df, fname in zip(
+        [dfvis, dft3, dfphot, dfqc, parent_df],
+        [visfname, t3fname, photfname, qcfname, parent_fname],
+    ):
+        df.to_pickle(fname)
+
+    print("Wrote data to dataframes")
