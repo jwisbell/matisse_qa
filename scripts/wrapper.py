@@ -11,6 +11,7 @@ import numpy as np
 
 from load_files import load_opd, load_phot_beams, load_raw_int, find_sof, load_spectrum
 from phot_plots import plot_spectra
+from utils import export_dict_to_df
 from waterfall import do_obj_corr_plots, do_waterfall
 from vis2_plots import plot_vis
 from t3_plots import plot_cphase
@@ -53,10 +54,16 @@ if __name__ == "__main__":
             phot_files = np.sort(glob(f"{d}/*PHOT*00*.fits"))
             spectra_files = np.sort(glob(f"{d}/*SPECTRUM*00*.fits"))
             print("Files loaded successfully!")
-        except:
+        except FileNotFoundError:
             print(f"No files found in {d}")
             continue
         # TODO: using the tpl information, make subdirs in the output dir
+
+        try:
+            # Do this here and then again later when the qcparams['custom'] has been updated
+            export_dict_to_df(data_dict, output_dir)
+        except FileNotFoundError:
+            print("Unable to write dataframes")
 
         if len(data_dict["inst"]["tpl"]) == 0:
             continue
@@ -167,7 +174,11 @@ if __name__ == "__main__":
         # phot_dict = load_phot_beams(phot_files, verbose=verbose)
         # then plot the photometries
         #
-        #
-        #
+
+        try:
+            # Do this here and then again later when the qcparams['custom'] has been updated
+            export_dict_to_df(data_dict, output_dir)
+        except FileNotFoundError:
+            print("Unable to write dataframes")
     print("Now showing all targets that have been processed!")
     get_obs(db_name)

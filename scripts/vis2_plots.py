@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from utils import baseline_idx_from_stapair, bcd_color_dict
+from utils import baseline_idx_from_stapair, bcd_color_dict, bcd_magic_numbers
 
 mpl.rcParams["font.family"] = "serif"
 mpl.rcParams["xtick.direction"] = "in"
@@ -21,6 +21,13 @@ mpl.rcParams["ytick.right"] = True
 normpa = mpl.colors.Normalize(vmin=-180, vmax=180)
 normphi = mpl.colors.Normalize(vmin=-180, vmax=180)
 normvis = mpl.colors.Normalize(vmin=0, vmax=1.1)
+
+
+def apply_magic_numbers(
+    data_dict_all, output_dir: str = "/.", save_fig: bool = False, verbose: int = 0
+):
+    # TODO: !
+    return
 
 
 def plot_vis(
@@ -371,14 +378,26 @@ def plot_vis(
             np.median(bcd_sorted[0][i], 0),
             np.median(bcd_sorted[1][i], 0),
             yerr=np.std(bcd_sorted[1][i], 0),
-            c="r",
+            c="k",
             zorder=1,
             marker="o",
             ls="none",
-            alpha=0.5,
+            alpha=0.95,
             label=label,
             errorevery=10,
         )
+        for jdx in range(len(bcd_sorted[0][i])):
+            axarr3.flatten()[i].errorbar(
+                bcd_sorted[0][i][jdx],
+                bcd_sorted[1][i][jdx],
+                yerr=0,
+                color="gray",
+                zorder=0.5,
+                marker="o",
+                ls="none",
+                alpha=0.25,
+                errorevery=10,
+            )
         label = "out-in"
         if i != 0:
             label = None
@@ -390,10 +409,22 @@ def plot_vis(
             zorder=1,
             marker="s",
             ls="none",
-            alpha=0.5,
+            alpha=0.95,
             label=label,
             errorevery=10,
         )
+        for jdx in range(len(bcd_sorted[0][i])):
+            axarr3.flatten()[i].errorbar(
+                bcd_sorted[0][i][jdx],
+                bcd_sorted[2][i][jdx],
+                yerr=0,
+                color="gray",
+                zorder=0.5,
+                marker="o",
+                ls="none",
+                alpha=0.25,
+                errorevery=10,
+            )
         label = "in-out"
         if i != 0:
             label = None
@@ -405,9 +436,21 @@ def plot_vis(
             zorder=1,
             marker="^",
             ls="none",
-            alpha=0.5,
+            alpha=0.95,
             label=label,
         )
+        for jdx in range(len(bcd_sorted[0][i])):
+            axarr3.flatten()[i].errorbar(
+                bcd_sorted[0][i][jdx],
+                bcd_sorted[3][i][jdx],
+                yerr=0,
+                color="gray",
+                zorder=0.5,
+                marker="o",
+                ls="none",
+                alpha=0.25,
+                errorevery=10,
+            )
 
         axarr3.flatten()[i + 6].errorbar(
             np.median(bcd_sorted[4][i], 0),
@@ -417,8 +460,20 @@ def plot_vis(
             zorder=1,
             marker="o",
             ls="none",
-            alpha=0.5,
+            alpha=0.95,
         )
+        for jdx in range(len(bcd_sorted[4][i])):
+            axarr3.flatten()[i].errorbar(
+                bcd_sorted[4][i][jdx],
+                bcd_sorted[5][i][jdx],
+                yerr=0,
+                color="gray",
+                zorder=0.5,
+                marker="o",
+                ls="none",
+                alpha=0.25,
+                errorevery=10,
+            )
 
         axarr3.flatten()[i].plot([0, 1.1], [0, 1.1], c="k", ls="--", zorder=0)
         axarr3.flatten()[i + 6].plot([0, 1.1], [0, 1.1], c="k", ls="--", zorder=0)
@@ -494,4 +549,54 @@ def plot_vis(
         plt.show()
     plt.close("all")
 
+    _compute_vis2_stats(data_dict_all)
+
     return None
+
+
+def _compute_vis2_stats(data_dict_all):
+    # For now, just compute the exposure to exposure dispersion
+    vis2 = [[] for _ in range(6)]
+    dphase = [[] for _ in range(6)]
+    cflux = [[] for _ in range(6)]
+    stations = [0 for _ in range(6)]
+
+    for i in range(len(data_dict_all["vis"]["vis2"])):
+        sta = data_dict_all["vis"]["vis2_sta"][i]
+        idx = baseline_idx_from_stapair(sta)
+        stations[idx] = sta
+        vis2[idx].append(data_dict_all["vis"]["vis2"][i])
+        dphase[idx].append(data_dict_all["vis"]["diff_phase"][i])
+        cflux[idx].append(data_dict_all["vis"]["cflux"][i])
+
+    band = data_dict_all["inst"]["band"]
+    wl_c = 3.5e-6
+    delta_wl = 0.1e-6
+    if band == "N":
+        wl_c = 11e-6
+
+    s = np.where(
+        np.logical_and(
+            np.array(data_dict_all["vis"]["wl_vis"][0]) >= wl_c - delta_wl / 2,
+            np.array(data_dict_all["vis"]["wl_vis"][0]) <= wl_c + delta_wl / 2,
+        )
+    )[0]
+
+    data_dict_all["qcparams"]["custom"]["vis2"] = {
+        "stations": stations,
+        "wavelength": [wl_c] * len(stations),
+        "mean": [np.mean(np.mean(np.array(x), 0)[s]) for x in vis2],
+        "std": [np.mean(np.std(np.array(x), 0)[s]) for x in vis2],
+    }
+    data_dict_all["qcparams"]["custom"]["dphase"] = {
+        "stations": stations,
+        "wavelength": [wl_c] * len(stations),
+        "mean": [np.mean(np.mean(np.array(x), 0)[s]) for x in dphase],
+        "std": [np.mean(np.std(np.array(x), 0)[s]) for x in dphase],
+    }
+    data_dict_all["qcparams"]["custom"]["visamp"] = {
+        "stations": stations,
+        "wavelength": [wl_c] * len(stations),
+        "mean": [np.mean(np.mean(np.array(x), 0)[s]) for x in cflux],
+        "std": [np.mean(np.std(np.array(x), 0)[s]) for x in cflux],
+    }

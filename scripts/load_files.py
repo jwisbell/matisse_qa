@@ -59,6 +59,7 @@ def load_raw_int(fnames, verbose: int = 0):
             "bcd": [],
         },
         "inst": {"bcd": [], "tpl": "", "targname": "", "band": "N"},
+        "qcparams": {"eso": {}, "custom": {}},
     }
 
     for f in fnames:
@@ -133,7 +134,21 @@ def load_raw_int(fnames, verbose: int = 0):
         except KeyError:
             print("No flux data found for", f)
 
+        eso_qc = _parse_qc(x[0].header)
+        data["qcparams"]["eso"] = eso_qc
+
     return data
+
+
+def _parse_qc(header: dict) -> dict:
+    parsed_qc = {}
+
+    for key, value in header.items():
+        if "qc" in key.lower():
+            mod_key = key.replace("ESO QC", "").replace("DET1", "").strip()
+            parsed_qc[mod_key] = value
+
+    return parsed_qc
 
 
 def load_opd(fnames, verbose=0):
