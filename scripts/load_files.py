@@ -72,7 +72,7 @@ def load_raw_int(fnames, verbose: int = 0):
         print(f"\t\t {f}")
         data["inst"]["tpl"] = x[0].header["eso tpl start"]
         data["inst"]["targname"] = (
-            x[0].header["eso obs targ name"].strip().replace(" ", "")
+            x[0].header["eso obs targ name"].strip().replace(" ", "").replace("_", "")
         )
 
         data["inst"]["tau0"] = np.mean(

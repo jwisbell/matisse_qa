@@ -3,6 +3,7 @@ from astropy.io import fits
 import matplotlib.pyplot as plt
 from glob import glob
 from scipy.ndimage import median_filter
+import pandas as pd
 
 from utils import bcd_color_dict_long as bcd_color_dict
 
@@ -491,7 +492,9 @@ def _calc_mean_sky(sky_file, band="LM"):
     return np.mean(sky_vals, 0)
 
 
-def do_obj_corr_plots(files, band, wl, output_dir, verbose, save_fig):
+def do_obj_corr_plots(
+    files, band, wl=3.5e-6, tplstart="", output_dir="./", verbose=0, save_fig=False
+):
     # plot the group delay from all the OBJ_CORR_FLUX files
     all_vals = []
     files = np.sort(files)
@@ -608,6 +611,12 @@ def do_obj_corr_plots(files, band, wl, output_dir, verbose, save_fig):
     if verbose > 1:
         plt.show()
     plt.close("all")
+
+    # Save the group delay data
+    df = pd.DataFrame.from_dict(all_vals)
+    df.to_pickle(
+        f"{output_dir}/../{target}_{tplstart.replace(":",'-').replace("_","-")}_{band}band_groupdelay_df.pkl"
+    )
 
     return None
 

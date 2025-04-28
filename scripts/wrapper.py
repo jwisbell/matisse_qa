@@ -131,12 +131,13 @@ if __name__ == "__main__":
 
         try:
             print("Plotting fringe peaks ... ")
-            mywl = 3.6
+            mywl = 3.5
             if band == "N":
                 mywl = 8.5
             do_obj_corr_plots(
                 objcorr_files,
                 band,
+                tplstart=tpl_start,
                 output_dir=formatted_outdir,
                 verbose=verbose,
                 wl=mywl,
@@ -164,6 +165,7 @@ if __name__ == "__main__":
         try:
             plot_spectra(
                 spectral_dict,
+                band,
                 verbose=verbose,
                 save_fig=save_fig,
                 output_dir=formatted_outdir,

@@ -1,6 +1,7 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 from utils import baseline_idx_from_stapair, bcd_color_dict
 
@@ -26,7 +27,6 @@ def _compute_mask_stats(masks, cutoff=3):
                     counts[loc] += 1
                 except KeyError:
                     counts[loc] = 1
-
     final_mask = []
     for idx, val in counts.items():
         if val >= cutoff:
@@ -50,6 +50,7 @@ def plot_opd(
     fig2, axarr2 = plt.subplots(6, 1, figsize=(8.5, 8.5), sharex=True)
     targname = data_dict["inst"]["targname"]
     band = data_dict["inst"]["band"]
+    tplstart = data_dict["inst"]["tpl"]
     yscale = 35
     y2scale = 15
     if band == "N":
@@ -99,6 +100,10 @@ def plot_opd(
                     color=bcd_color_dict[bcd],
                     # label=bcd,
                 )
+    total_opd_measurements = 0
+    for v in baselines[0]:
+        total_opd_measurements += len(v)
+
     final_mask = _compute_mask_stats(masks, cutoff=opd_cutoff)
     for loc in final_mask:
         for idx in range(6):
@@ -130,7 +135,10 @@ def plot_opd(
     axarr.flatten()[-2].set_xlabel("Time [MJD]")
     axarr.flatten()[-2].set_ylabel("OPD [micron]")
 
-    fig1.suptitle(f"OPDs -- flagging with {opd_cutoff} simultaneous bad OPDs")
+    fig1.suptitle(
+        f"OPDs -- flagging with {opd_cutoff} simultaneous bad OPDs\n"
+        + f"Fraction flagged: {len(final_mask) / total_opd_measurements}"
+    )
 
     axarr2.flatten()[-1].set_xlabel("Time [MJD]")
     axarr2.flatten()[-1].set_ylabel("Delta OPD [micron]")
@@ -146,3 +154,12 @@ def plot_opd(
         plt.show()
 
     plt.close("all")
+
+    df = pd.DataFrame.from_dict(opd_dict)
+    df.to_pickle(
+        f"{output_dir}/../{targname}_{tplstart.replace(":",'-').replace("_","-")}_{band}band_opd_df.pkl"
+    )
+    print(f"Fraction flagged: {len(final_mask) / total_opd_measurements}")
+    data_dict["qcparams"]["custom"]["frac_flagged_opd"] = (
+        len(final_mask) / total_opd_measurements
+    )

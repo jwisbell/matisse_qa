@@ -17,10 +17,49 @@ _ut_triplet_mapping = {
     "[32 34 35]": 3,
 }
 
+
+def apply_magic_numbers(sta_pair, bcd: str, band: str, vis2, wls):
+    print(sta_pair)
+    idx = baseline_idx_from_stapair(sta_pair)
+    try:
+        slope = bcd_magic_numbers[band][bcd][idx][0]
+        intercept = bcd_magic_numbers[band][bcd][idx][1]
+        divmult = bcd_magic_numbers[band][bcd][idx][2]
+        magic_interp = slope * wls / 1e6 + intercept
+    except KeyError:
+        magic_interp = 1
+        divmult = "m"
+
+    if divmult == "m":
+        return vis2 * magic_interp
+    else:
+        return vis2 / magic_interp
+
+
 bcd_magic_numbers = {
-    "L": {"oo": 0},
+    "LM": {
+        "oo": {5: [0, 1, "m"], 2: [0, 1, "m"]},
+        "oo_phot": {5: [0, 1, "m"], 2: [0, 1, "m"]},
+        "oi": {
+            4: [-112293.6863, 1.547707906, "d"],
+            3: [-169956.9351, 1.818169518, "m"],
+        },
+        "io": {
+            1: [-101396.8417, 1.634890426, "m"],
+            0: [-158400.8854, 1.892069706, "d"],
+        },
+        "ii": {
+            5: [-316934.6898, 2.653648283, "d"],
+            2: [-20401.00783, 0.996200466, "d"],
+        },
+        "ii_phot": {
+            5: [-316934.6898, 2.653648283, "d"],
+            2: [-20401.00783, 0.996200466, "d"],
+        },
+    },
     "N": {
         "oo": {5: [0, 1], 2: [0, 1]},
+        "oo_phot": {5: [0, 1], 2: [0, 1]},
         "oi": {
             4: [-52769.1174440545, 1.71871289158438],
             3: [-68604.0869050424, 1.90429960230199],
@@ -94,6 +133,17 @@ def bcd_flip(ydata, sta_triplet, bcd):
     return ydata
 
 
+def mask_wls(wls, band):
+    if band == "LM":
+        s1 = np.where(np.logical_and(wls > 3.1, wls < 3.95))[0]
+        s2 = np.where(np.logical_and(wls > 4.5, wls < 5))[0]
+        kept = np.append(s1, s2)
+        return np.array([i in kept for i in range(len(wls))])
+    else:
+        kept = np.where(np.logical_and(wls < 13.0, wls > 8.0))[0]
+        return np.array([i in kept for i in range(len(wls))])
+
+
 def export_dict_to_df(data_dict, outdir):
     dfvis = pd.DataFrame.from_dict(data_dict["vis"])
     dft3 = pd.DataFrame.from_dict(data_dict["cphase"])
@@ -104,14 +154,29 @@ def export_dict_to_df(data_dict, outdir):
     tpl = inst["tpl"]
     targ = inst["targname"]
     band = inst["band"]
-    visfname = f"{outdir}/{targ}_{tpl.replace(":","_")}_{band}band_vis_df.pkl"
-    t3fname = f"{outdir}/{targ}_{tpl.replace(":","_")}_{band}band_cphase_df.pkl"
-    photfname = f"{outdir}/{targ}_{tpl.replace(":","_")}_{band}band_phot_df.pkl"
-    qcfname = f"{outdir}/{targ}_{tpl.replace(":","_")}_{band}band_qc_df.pkl"
+    visfname = (
+        f"{outdir}/{targ}_{tpl.replace(":","-").replace('_','-')}_{band}band_vis_df.pkl"
+    )
+    t3fname = f"{outdir}/{targ}_{tpl.replace(":","-").replace('_','-')}_{band}band_cphase_df.pkl"
+    photfname = f"{outdir}/{targ}_{tpl.replace(":","-").replace('_','-')}_{band}band_phot_df.pkl"
+    qcfname = (
+        f"{outdir}/{targ}_{tpl.replace(":","-").replace('_','-')}_{band}band_qc_df.pkl"
+    )
 
-    fnames = {"vis": visfname, "cphase": t3fname, "phot": photfname, "qc": qcfname}
+    gdfname = f"{outdir}/{targ}_{tpl.replace(":","-").replace('_','-')}_{band}band_groupdelay_df.pkl"
+    opdfname = (
+        f"{outdir}/{targ}_{tpl.replace(":","-").replace('_','-')}_{band}band_opd_df.pkl"
+    )
+    fnames = {
+        "vis": visfname,
+        "cphase": t3fname,
+        "phot": photfname,
+        "qc": qcfname,
+        "gd": gdfname,
+        "opd": opdfname,
+    }
     parent_df = pd.DataFrame.from_dict({"files": fnames})
-    parent_fname = f"{outdir}/{targ}_{tpl.replace(":","_")}_{band}band_parent_df.pkl"
+    parent_fname = f"{outdir}/{targ}_{tpl.replace(":","-").replace('_','-')}_{band}band_parent_df.pkl"
 
     # TODO: save these
 
