@@ -24,7 +24,7 @@ normtime = mpl.colors.Normalize(vmin=0, vmax=16)
 
 
 def plot_spectra(
-    data_dict, output_dir: str = "/.", save_fig: bool = False, verbose: int = 0
+    data_dict, band, output_dir: str = "/.", save_fig: bool = False, verbose: int = 0
 ):
     fig, axarr = plt.subplots(3, 2, sharex=False, figsize=(11, 8.5))
     mapping = {32: 0, 33: 1, 34: 2, 35: 3}
@@ -36,7 +36,7 @@ def plot_spectra(
         vmax=12,  # np.max([np.max(x) for x in data_dict["oo"]["time"]])
     )
     targname = data_dict["targname"]
-    band = data_dict["inst"]["band"]
+    # band = data_dict["inst"]["band"]
     mywls = 0
     maxflux = 0
     for key, value in data_dict.items():

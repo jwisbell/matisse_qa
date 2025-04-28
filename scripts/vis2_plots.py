@@ -9,7 +9,13 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from utils import baseline_idx_from_stapair, bcd_color_dict, bcd_magic_numbers
+from utils import (
+    apply_magic_numbers,
+    baseline_idx_from_stapair,
+    bcd_color_dict,
+    bcd_magic_numbers,
+    mask_wls,
+)
 
 mpl.rcParams["font.family"] = "serif"
 mpl.rcParams["xtick.direction"] = "in"
@@ -21,13 +27,6 @@ mpl.rcParams["ytick.right"] = True
 normpa = mpl.colors.Normalize(vmin=-180, vmax=180)
 normphi = mpl.colors.Normalize(vmin=-180, vmax=180)
 normvis = mpl.colors.Normalize(vmin=0, vmax=1.1)
-
-
-def apply_magic_numbers(
-    data_dict_all, output_dir: str = "/.", save_fig: bool = False, verbose: int = 0
-):
-    # TODO: !
-    return
 
 
 def plot_vis(
@@ -61,10 +60,9 @@ def plot_vis(
         bcd = data_dict["bcd"][i]
         yupper = 1.1
 
-        s = np.where(np.logical_and(xdata > 4.0, xdata < 4.5))[0]
-        if band == "N":
-            s = np.where(np.logical_or(xdata > 13.0, xdata < 8.0))[0]
-        ydata[s] = np.nan
+        wl_mask = mask_wls(xdata, band)
+        s = wl_mask
+        ydata[~s] = np.nan
 
         if band == "N":
             yupper = np.nanmax(data_dict["cflux"])
@@ -168,12 +166,15 @@ def plot_vis(
         xdata = data_dict["wl_vis"][i] * 1e6
         ydata = data_dict["vis2"][i]
         bcd = data_dict["bcd"][i]
+
+        ydata = apply_magic_numbers(sta, bcd, band, ydata, xdata)
+
         yupper = 1.1
 
-        s = np.where(np.logical_and(xdata > 4.0, xdata < 4.5))[0]
-        if band == "N":
-            s = np.where(np.logical_or(xdata > 13.0, xdata < 8.0))[0]
-        ydata[s] = np.nan
+        wl_mask = mask_wls(xdata, band)
+        s = wl_mask
+        ydata[~s] = np.nan
+        # ydata2[~s] = np.nan
 
         if band == "N":
             yupper = np.nanmax(data_dict["vis2"])
@@ -192,6 +193,7 @@ def plot_vis(
             color=bcd_color_dict[bcd],
             zorder=1,
         )
+
         axarr2.flatten()[idx].errorbar(
             xdata,
             ydata,
@@ -284,10 +286,9 @@ def plot_vis(
         yerr = data_dict["diff_phase_err"][i]
         bcd = data_dict["bcd"][i]
 
-        s = np.where(np.logical_and(xdata > 4.0, xdata < 4.5))[0]
-        if band == "N":
-            s = np.where(np.logical_or(xdata > 13.0, xdata < 8.0))[0]
-        ydata[s] = np.nan
+        wl_mask = mask_wls(xdata, band)
+        s = wl_mask
+        ydata[~s] = np.nan
 
         bl_lengths[idx].append(bl)
 
@@ -386,7 +387,7 @@ def plot_vis(
             label=label,
             errorevery=10,
         )
-        for jdx in range(len(bcd_sorted[0][i])):
+        for jdx in range(len(bcd_sorted[1][i])):
             axarr3.flatten()[i].errorbar(
                 bcd_sorted[0][i][jdx],
                 bcd_sorted[1][i][jdx],
@@ -413,7 +414,8 @@ def plot_vis(
             label=label,
             errorevery=10,
         )
-        for jdx in range(len(bcd_sorted[0][i])):
+
+        for jdx in range(len(bcd_sorted[2][i])):
             axarr3.flatten()[i].errorbar(
                 bcd_sorted[0][i][jdx],
                 bcd_sorted[2][i][jdx],
@@ -439,7 +441,7 @@ def plot_vis(
             alpha=0.95,
             label=label,
         )
-        for jdx in range(len(bcd_sorted[0][i])):
+        for jdx in range(len(bcd_sorted[3][i])):
             axarr3.flatten()[i].errorbar(
                 bcd_sorted[0][i][jdx],
                 bcd_sorted[3][i][jdx],

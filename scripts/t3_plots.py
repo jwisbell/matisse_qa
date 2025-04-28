@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from utils import triplet_idx_from_statriplet, bcd_flip, bcd_marker_dict
+from utils import triplet_idx_from_statriplet, bcd_flip, bcd_marker_dict, mask_wls
 
 mpl.rcParams["font.family"] = "serif"
 mpl.rcParams["xtick.direction"] = "in"
@@ -65,11 +65,15 @@ def plot_cphase(
         ydata = bcd_flip(ydata, sta, bcd)
         xdata = data_dict["wl_t3"][i] * 1e6
 
-        s = np.where(np.logical_and(xdata > 4.0, xdata < 4.5))[0]
-        if band == "N":
-            # s = np.where(np.logical_and(xdata > 13.0, xdata < 7.5))[0]
-            s = []  # no wavelengths to mask
-        ydata[s] = np.nan
+        # s = np.where(np.logical_and(xdata > 4.0, xdata < 4.5))[0]
+        # if band == "N":
+        #     # s = np.where(np.logical_and(xdata > 13.0, xdata < 7.5))[0]
+        #     s = []  # no wavelengths to mask
+        # ydata[s] = np.nan
+
+        wl_mask = mask_wls(xdata, band)
+        s = wl_mask
+        ydata[~s] = np.nan
 
         zdata = [pa] * len(xdata)
 
@@ -212,4 +216,38 @@ def plot_cphase(
         plt.show()
     plt.close("all")
 
+    _compute_t3_stats(data_dict_all)
+
     return None
+
+
+def _compute_t3_stats(data_dict_all):
+    # For now, just compute the exposure to exposure dispersion
+    t3phi = [[] for _ in range(4)]
+    stations = [0 for _ in range(4)]
+
+    for i in range(len(data_dict_all["cphase"]["t3phi"])):
+        sta = data_dict_all["cphase"]["t3_sta"][i]
+        idx = triplet_idx_from_statriplet(sta)
+        stations[idx] = sta
+        t3phi[idx].append(data_dict_all["cphase"]["t3phi"][i])
+
+    band = data_dict_all["inst"]["band"]
+    wl_c = 3.5e-6
+    delta_wl = 0.1e-6
+    if band == "N":
+        wl_c = 11e-6
+
+    s = np.where(
+        np.logical_and(
+            np.array(data_dict_all["cphase"]["wl_t3"][0]) >= wl_c - delta_wl / 2,
+            np.array(data_dict_all["cphase"]["wl_t3"][0]) <= wl_c + delta_wl / 2,
+        )
+    )[0]
+
+    data_dict_all["qcparams"]["custom"]["cphase"] = {
+        "stations": stations,
+        "wavelength": [wl_c] * len(stations),
+        "mean": [np.mean(np.mean(np.array(x), 0)[s]) for x in t3phi],
+        "std": [np.mean(np.std(np.array(x), 0)[s]) for x in t3phi],
+    }
