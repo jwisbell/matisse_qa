@@ -35,8 +35,11 @@ def plot_cphase(
     targname = data_dict_all["inst"]["targname"]
     band = data_dict_all["inst"]["band"]
 
-    fig1, axarr1 = plt.subplots(2, 4, figsize=(11, 8.5))
-    fig2, axarr2 = plt.subplots(1, 2, figsize=(8.5, 4.25))
+    fig1, axarr1 = plt.subplots(2, 5, figsize=(11, 8.5), width_ratios=[1, 1, 1, 1, 0.1])
+    fig2, axarr2 = plt.subplots(1, 3, figsize=(8.5, 4.25), width_ratios=[1, 1, 0.1])
+    axarr1[0, -1].axis("off")
+    axarr1[1, -1].axis("off")
+    axarr2[-1].axis("off")
 
     loop_names = ["2-3-4", "1-2-3", "1-2-4", "1-3-4"]
 
@@ -88,7 +91,7 @@ def plot_cphase(
             norm=normpa,
             cmap="twilight",
             zorder=1,
-            alpha=0.5,
+            alpha=0.95,
         )
 
         axarr1.flatten()[j % 4].errorbar(
@@ -104,7 +107,7 @@ def plot_cphase(
         )
         axarr1.flatten()[j % 4].set_ylim([-180, 180])
 
-        im = axarr1.flatten()[j % 4 + 4].scatter(
+        axarr1[1, j % 4].scatter(
             xdata,
             ydata,
             s=5,
@@ -115,12 +118,12 @@ def plot_cphase(
             marker=marker,
             alpha=0.5,
         )
-        axarr1.flatten()[j % 4 + 4].errorbar(
+        axarr1[1, j % 4].errorbar(
             xdata, ydata, yerr=yerr, ls="-", marker=".", color="k", alpha=0.25, zorder=0
         )
 
-        axarr1.flatten()[j % 4 + 4].set_ylim([-30, 30])
-        axarr1.flatten()[j % 4 + 4].set_title(loop_names[j])
+        axarr1[1, j % 4].set_ylim([-30, 30])
+        axarr1[1, j % 4].set_title(loop_names[j])
 
         collected_vals[j].append(ydata)
 
@@ -174,7 +177,7 @@ def plot_cphase(
 
     for i in range(0, 4):
         try:
-            axarr1.flatten()[i].errorbar(
+            axarr1[0, i].errorbar(
                 xdata,
                 np.median(collected_vals[i], 0),
                 yerr=np.std(collected_vals[i], 0) * 0,
@@ -185,7 +188,7 @@ def plot_cphase(
                 zorder=3,
                 errorevery=10,
             )
-            axarr1.flatten()[i + 4].errorbar(
+            axarr1[1, i].errorbar(
                 xdata,
                 np.median(collected_vals[i], 0),
                 yerr=np.std(collected_vals[i], 0) * 0,
@@ -198,6 +201,8 @@ def plot_cphase(
             )
         except:
             continue
+    plt.colorbar(im, ax=axarr1[-1, -1], label="PA [deg]")
+    plt.colorbar(im, ax=axarr2[-1], label="PA [deg]")
 
     axarr1[1, 0].set_ylabel("T3 [deg]")
     axarr1[1, 0].set_xlabel("Wavelength [micron]")

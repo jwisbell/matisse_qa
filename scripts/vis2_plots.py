@@ -15,6 +15,7 @@ from utils import (
     bcd_color_dict,
     bcd_magic_numbers,
     mask_wls,
+    make_legend,
 )
 
 mpl.rcParams["font.family"] = "serif"
@@ -519,6 +520,10 @@ def plot_vis(
     axarr4[2, 0].set_ylabel("Differential Phase")
     axarr4[1, 0].set_xlabel("Wavelength [micron]")
     axarr4[2, 0].set_xlabel("Spatial Frequency [MLambda]")
+
+    make_legend(axarr2[-1, -1])
+    make_legend(axarr1[-1, -1])
+    make_legend(axarr4[-1, -1])
     # axarr2.suptitle.set_text(f'')
 
     # plt.colorbar(
@@ -536,7 +541,7 @@ def plot_vis(
     # )
     plt.colorbar(im2_uv1, ax=axarr2.flatten()[-2], orientation="vertical", label="Vis")
     plt.colorbar(
-        im3_uv1, ax=axarr2.flatten()[-2], orientation="vertical", label="Diff. Phase"
+        im3_uv1, ax=axarr4.flatten()[-2], orientation="vertical", label="Diff. Phase"
     )
 
     fig1.tight_layout()
