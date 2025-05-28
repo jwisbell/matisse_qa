@@ -187,3 +187,11 @@ def export_dict_to_df(data_dict, outdir):
         df.to_pickle(fname)
 
     print("Wrote data to dataframes")
+
+
+def make_legend(ax):
+    for name, color in bcd_color_dict.items():
+        ax.plot(0, 0, color=color, label=name)
+    ax.set_ylim(1, 2)
+    ax.set_xlim(1, 2)
+    ax.legend()

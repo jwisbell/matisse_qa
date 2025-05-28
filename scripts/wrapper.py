@@ -150,8 +150,10 @@ if __name__ == "__main__":
                         wl=mywl,
                         save_fig=save_fig,
                     )
-                except:
+                except Exception as e:
                     print("Something went wrong while plotting group delay...")
+                    print(e)
+                    _ = input("huh")
 
                 sof = ""
                 try:
