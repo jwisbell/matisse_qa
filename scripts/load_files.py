@@ -168,25 +168,37 @@ def load_opd(fnames, verbose=0):
     for f in fnames:
         x = fits.open(f)
         opd = x[3].data["opd"]
-        time = np.arange(custom_time, custom_time + len(opd), 1)  # x[3].data["time"]
+        time = x[3].data["time"]
         # print(custom_time, time[-1])
         custom_time = time[-1] + 1
+        # get mjd start
+        # get exposure time
+        # make custom time
+        # test = x[3].data["time"]
+        # custom_time = test
+
         sta_idx = x[3].data["sta_index"]
         bcd = "oo"
         bcd_config = (
             f"{x[0].header['ESO INS BCD1 ID']}-{x[0].header['ESO INS BCD2 ID']}".lower()
         )
 
-        if "0002.fits" in f or bcd_config == "in-in":
-            bcd = "ii"
-        elif "0003.fits" in f or bcd_config == "in-out":
+        is_chopping = x[0].header["eso iss chop st"] == "T"
+
+        if bcd_config == "in-out":
             bcd = "io"
-        elif "0004.fits" in f or bcd_config == "out-in":
+        elif bcd_config == "out-in":
             bcd = "oi"
-        elif "0005.fits" in f or (bcd_config == "out-out" and "0011.fits" in f):
-            bcd = "oo_phot"
-        elif "0006.fits" in f or (bcd_config == "in-in" and "0012.fits" in f):
-            bcd = "ii_phot"
+        elif bcd_config == "out-out":
+            if is_chopping:
+                bcd = "oo_phot"
+            else:
+                bcd = "oo"
+        elif bcd_config == "in-in":
+            if is_chopping:
+                bcd = "ii_phot"
+            else:
+                bcd = "ii"
 
         sta_pairs = [(sta_idx[0][i], sta_idx[0][i + 1]) for i in range(0, 12, 2)]
 

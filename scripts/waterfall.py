@@ -27,14 +27,6 @@ n_raw_slice_locs = {
     "6": 342,
 }
 
-colors_dict = {
-    "t1t2": "blue",
-    "t1t3": "red",
-    "t1t4": "green",
-    "t2t3": "mediumorchid",
-    "t2t4": "orange",
-    "t3t4": "brown",
-}
 markers_dict = {
     "t1t2": "s",
     "t1t3": "o",
@@ -50,9 +42,11 @@ def _compute_obj_corr_vals(fname, band, wl=3.6):
 
     targname = x[0].header["eso obs targ name"]
     tpl = x[0].header["eso tpl start"]
+    mjd0 = x[0].header["mjd-obs"]
     bcd_config = (
         f"{x[0].header['ESO INS BCD1 ID']}-{x[0].header['ESO INS BCD2 ID']}".lower()
     )
+    is_chopping = x[0].header["eso iss chop st"] == "T"
     test_gd = {int(k) - 1: [] for k in lm_raw_slice_locs}
     test_fp = {int(k) - 1: [] for k in lm_raw_slice_locs}
     if band == "N":
@@ -73,8 +67,20 @@ def _compute_obj_corr_vals(fname, band, wl=3.6):
     wl_idx = np.argmin(np.abs(all_wls - wl))
     wl_w = 10
 
+    if is_chopping:
+        bcd_config += "_phot"
+
     group_delay_dict = {
         "out-out": {
+            "total": [],
+            "t3t4": [],
+            "t1t2": [],
+            "t1t3": [],
+            "t1t4": [],
+            "t2t3": [],
+            "t2t4": [],
+        },
+        "out-out_phot": {
             "total": [],
             "t3t4": [],
             "t1t2": [],
@@ -102,6 +108,15 @@ def _compute_obj_corr_vals(fname, band, wl=3.6):
             "t2t4": [],
         },
         "in-in": {
+            "total": [],
+            "t3t4": [],
+            "t1t2": [],
+            "t1t3": [],
+            "t1t4": [],
+            "t2t3": [],
+            "t2t4": [],
+        },
+        "in-in_phot": {
             "total": [],
             "t3t4": [],
             "t1t2": [],
@@ -122,6 +137,15 @@ def _compute_obj_corr_vals(fname, band, wl=3.6):
             "t2t3": [],
             "t2t4": [],
         },
+        "out-out_phot": {
+            "total": [],
+            "t3t4": [],
+            "t1t2": [],
+            "t1t3": [],
+            "t1t4": [],
+            "t2t3": [],
+            "t2t4": [],
+        },
         "out-in": {
             "total": [],
             "t3t4": [],
@@ -141,6 +165,15 @@ def _compute_obj_corr_vals(fname, band, wl=3.6):
             "t2t4": [],
         },
         "in-in": {
+            "total": [],
+            "t3t4": [],
+            "t1t2": [],
+            "t1t3": [],
+            "t1t4": [],
+            "t2t3": [],
+            "t2t4": [],
+        },
+        "in-in_phot": {
             "total": [],
             "t3t4": [],
             "t1t2": [],
@@ -225,6 +258,14 @@ def _compute_obj_corr_vals(fname, band, wl=3.6):
         group_delay_dict["out-out"]["t2t4"] = test_gd[3]
         group_delay_dict["out-out"]["t1t3"] = test_gd[4]
         group_delay_dict["out-out"]["t1t4"] = test_gd[5]
+    elif bcd_config == "out-out_phot":
+        group_delay_dict["out-out"]["total"] = test_gd[6]
+        group_delay_dict["out-out"]["t3t4"] = test_gd[0]
+        group_delay_dict["out-out"]["t1t2"] = test_gd[1]
+        group_delay_dict["out-out"]["t2t3"] = test_gd[2]
+        group_delay_dict["out-out"]["t2t4"] = test_gd[3]
+        group_delay_dict["out-out"]["t1t3"] = test_gd[4]
+        group_delay_dict["out-out"]["t1t4"] = test_gd[5]
     elif bcd_config == "out-in":
         group_delay_dict["out-out"]["total"] = test_gd[6]
         group_delay_dict["out-out"]["t3t4"] = test_gd[0]
@@ -249,8 +290,24 @@ def _compute_obj_corr_vals(fname, band, wl=3.6):
         group_delay_dict["out-out"]["t1t3"] = test_gd[3]
         group_delay_dict["out-out"]["t2t4"] = test_gd[4]
         group_delay_dict["out-out"]["t2t3"] = test_gd[5]
+    elif bcd_config == "in-in_phot":
+        group_delay_dict["out-out"]["total"] = test_gd[6]
+        group_delay_dict["out-out"]["t3t4"] = test_gd[0]
+        group_delay_dict["out-out"]["t1t2"] = test_gd[1]
+        group_delay_dict["out-out"]["t1t4"] = test_gd[2]
+        group_delay_dict["out-out"]["t1t3"] = test_gd[3]
+        group_delay_dict["out-out"]["t2t4"] = test_gd[4]
+        group_delay_dict["out-out"]["t2t3"] = test_gd[5]
 
     if bcd_config == "out-out":
+        fringe_peak_dict["out-out"]["total"] = test_fp[6]
+        fringe_peak_dict["out-out"]["t3t4"] = test_fp[0]
+        fringe_peak_dict["out-out"]["t1t2"] = test_fp[1]
+        fringe_peak_dict["out-out"]["t2t3"] = test_fp[2]
+        fringe_peak_dict["out-out"]["t2t4"] = test_fp[3]
+        fringe_peak_dict["out-out"]["t1t3"] = test_fp[4]
+        fringe_peak_dict["out-out"]["t1t4"] = test_fp[5]
+    elif bcd_config == "out-out_phot":
         fringe_peak_dict["out-out"]["total"] = test_fp[6]
         fringe_peak_dict["out-out"]["t3t4"] = test_fp[0]
         fringe_peak_dict["out-out"]["t1t2"] = test_fp[1]
@@ -275,6 +332,14 @@ def _compute_obj_corr_vals(fname, band, wl=3.6):
         fringe_peak_dict["out-out"]["t1t4"] = test_fp[4]
         fringe_peak_dict["out-out"]["t1t3"] = test_fp[5]
     elif bcd_config == "in-in":
+        fringe_peak_dict["out-out"]["total"] = test_fp[6]
+        fringe_peak_dict["out-out"]["t3t4"] = test_fp[0]
+        fringe_peak_dict["out-out"]["t1t2"] = test_fp[1]
+        fringe_peak_dict["out-out"]["t1t4"] = test_fp[2]
+        fringe_peak_dict["out-out"]["t1t3"] = test_fp[3]
+        fringe_peak_dict["out-out"]["t2t4"] = test_fp[4]
+        fringe_peak_dict["out-out"]["t2t3"] = test_fp[5]
+    elif bcd_config == "in-in_phot":
         fringe_peak_dict["out-out"]["total"] = test_fp[6]
         fringe_peak_dict["out-out"]["t3t4"] = test_fp[0]
         fringe_peak_dict["out-out"]["t1t2"] = test_fp[1]
@@ -446,7 +511,10 @@ def _basic_waterfall(
         # disp_arr[jdx] = spectrum
         # axarr2.flatten()[idx].imshow(disp_arr, origin="lower")
 
-    fig2.suptitle("Photometric flux")
+    # fig2.suptitle("Photometric flux")
+    fig2.suptitle(
+        f"{targname}_{band}_photometry_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}"
+    )
 
     if output_dir is not None and save_fig:
         fig1.savefig(

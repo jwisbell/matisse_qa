@@ -59,7 +59,7 @@ def plot_opd(
 
     baselines = {k: [] for k in range(6)}
     masks = {k: [] for k in range(6)}  # mask with bad values
-
+    start = 1e8
     for bcd in opd_dict.keys():
         for times, opds, stas in zip(
             opd_dict[bcd]["time"], opd_dict[bcd]["opd"], opd_dict[bcd]["tels"]
@@ -69,6 +69,8 @@ def plot_opd(
             opds = opd_dict[bcd]["opd"]
             stas = opd_dict[bcd]["tel"]
             """
+            if times[0] < start:
+                start = times[0]
             for idx in range(6):
                 baselines[idx].append(opds)
                 sta_idx = baseline_idx_from_stapair(stas[idx])
@@ -108,12 +110,12 @@ def plot_opd(
     for loc in final_mask:
         for idx in range(6):
             axarr[idx, 0].plot(
-                [loc, loc], [-yscale, yscale], color="r", lw=3, alpha=0.35
+                [loc, loc], [-yscale, yscale], color="r", lw=3, alpha=0.15
             )
 
     for bcd, color in bcd_color_dict.items():
-        axarr.flatten()[-2].scatter(-100, 2 * yscale, c=color, label=bcd)
-        axarr2.flatten()[-1].scatter(-100, 2 * yscale, c=color, label=bcd)
+        axarr.flatten()[-2].scatter(start, 0 * yscale, c=color, label=bcd)
+        axarr2.flatten()[-1].scatter(start, 0 * yscale, c=color, label=bcd)
     axarr2.flatten()[-1].legend(fontsize="small", ncol=6)
     axarr.flatten()[-2].legend(fontsize="small", ncol=6)
 
@@ -126,18 +128,18 @@ def plot_opd(
 
     for ax in axarr[:, 0]:
         ax.set_ylim([-yscale, yscale])
-        ax.set_xlim([0, None])
+        ax.set_xlim([start, None])
 
     for ax in axarr2.flatten():
         ax.set_ylim([0, y2scale])
-        ax.set_xlim([0, None])
+        ax.set_xlim([start, None])
 
     axarr.flatten()[-2].set_xlabel("Time [MJD]")
     axarr.flatten()[-2].set_ylabel("OPD [micron]")
 
     fig1.suptitle(
         f"OPDs -- flagging with {opd_cutoff} simultaneous bad OPDs\n"
-        + f"Fraction flagged: {len(final_mask) / total_opd_measurements}"
+        + f"Frames flagged: {len(final_mask)}"
     )
 
     axarr2.flatten()[-1].set_xlabel("Time [MJD]")
