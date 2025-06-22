@@ -35,8 +35,8 @@ def plot_cphase(
     targname = data_dict_all["inst"]["targname"]
     band = data_dict_all["inst"]["band"]
 
-    fig1, axarr1 = plt.subplots(2, 5, figsize=(11, 8.5), width_ratios=[1, 1, 1, 1, 0.1])
-    fig2, axarr2 = plt.subplots(1, 3, figsize=(8.5, 4.25), width_ratios=[1, 1, 0.1])
+    fig1, axarr1 = plt.subplots(2, 5, figsize=(11, 8.5), width_ratios=[1, 1, 1, 1, 0.5])
+    fig2, axarr2 = plt.subplots(1, 3, figsize=(8.5, 4.25), width_ratios=[1, 1, 0.5])
     axarr1[0, -1].axis("off")
     axarr1[1, -1].axis("off")
     axarr2[-1].axis("off")
@@ -214,8 +214,8 @@ def plot_cphase(
     fig2.tight_layout()
 
     if output_dir is not None and save_fig:
-        fig1.savefig(f"{output_dir}/{targname}_{band}_t3_phi.png")
-        fig2.savefig(f"{output_dir}/{targname}_{band}_t3_phi_perimeter_spatialfreq.png")
+        fig1.savefig(f"{output_dir}/{targname}_{band}_t3_phi.pdf")
+        fig2.savefig(f"{output_dir}/{targname}_{band}_t3_phi_perimeter_spatialfreq.pdf")
 
     if verbose > 1:
         plt.show()

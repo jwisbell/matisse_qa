@@ -149,8 +149,8 @@ def plot_opd(
     fig2.subplots_adjust(hspace=0.05, wspace=0.05)
 
     if output_dir is not None and save_fig:
-        fig1.savefig(f"{output_dir}/{targname}_{band}_opd_values.png")
-        fig2.savefig(f"{output_dir}/{targname}_{band}_diffopd_values.png")
+        fig1.savefig(f"{output_dir}/{targname}_{band}_opd_values.pdf")
+        fig2.savefig(f"{output_dir}/{targname}_{band}_diffopd_values.pdf")
 
     if verbose > 1:
         plt.show()

@@ -128,7 +128,7 @@ def plot_spectra(
     plt.tight_layout()
 
     if output_dir is not None and save_fig:
-        plt.savefig(f"{output_dir}/{targname}_{band}_singledish_spectra.png")
+        plt.savefig(f"{output_dir}/{targname}_{band}_singledish_spectra.pdf")
 
     if verbose > 1:
         plt.show()

@@ -11,6 +11,7 @@ import numpy as np
 
 from load_files import load_opd, load_phot_beams, load_raw_int, find_sof, load_spectrum
 from phot_plots import plot_spectra
+from make_pdf import merge_pdfs, create_title_page
 from utils import export_dict_to_df
 from waterfall import do_obj_corr_plots, do_waterfall
 from vis2_plots import plot_vis
@@ -120,7 +121,6 @@ if __name__ == "__main__":
                 print("Visibilities plotted successfully!")
             except UnboundLocalError:
                 print(f"Something wrong with {d} when plotting visibilities")
-                continue
 
             try:
                 print("Plotting closure phases ...")
@@ -133,7 +133,6 @@ if __name__ == "__main__":
                 print("Closure phases plotted successfully!")
             except UnboundLocalError:
                 print(f"Something wrong with {d} when plotting closure phases")
-                continue
 
             if not skip_plotting:
                 try:
@@ -191,15 +190,43 @@ if __name__ == "__main__":
                 # then plot the photometries
                 #
 
+            pdfs = np.sort(glob(formatted_outdir + "/*.pdf"))
+            qc1 = np.mean(
+                np.array(data_dict["qcparams"]["custom"]["vis2"]["mean"])
+                / np.array(data_dict["qcparams"]["custom"]["vis2"]["std"])
+            )
+            qc2 = np.mean(
+                np.array(data_dict["qcparams"]["custom"]["cphase"]["mean"])
+                / np.array(data_dict["qcparams"]["custom"]["cphase"]["std"])
+            )
+            qc3 = 0.0
+            for j in range(1, 7):
+                qc3 += data_dict["qcparams"]["eso"][f"DPHASE{j} STDEV"]
+            qc3 /= 6
+            create_title_page(
+                output_path=f"{formatted_outdir}/_title_page.pdf",
+                title=f"Target: {data_dict['inst']['targname']}",
+                subtitle=f"TPL Start: {tpl_start}",
+                tau0=f"Average tau0: {data_dict['inst']['tau0']*1000 :0.2f} ms",
+                qc1=f"Vis2 SNR @{data_dict['qcparams']['custom']['vis2']['wavelength'][0]*1e6:.2f} um: {qc1:.2f}",
+                qc2=f"t3phi SNR @{data_dict['qcparams']['custom']['cphase']['wavelength'][0]*1e6:.2f} um: {qc2:.2f}",
+                qc3=f"Mean DPHASE STD: {qc3:.2f}",
+            )
+            pdfs = np.append([f"{formatted_outdir}/_title_page.pdf"], pdfs)
+            merge_pdfs(
+                pdfs, formatted_outdir + f"/{tpl_start.replace(':','_')}_output.pdf"
+            )
             try:
                 # Do this here and then again later when the qcparams['custom'] has been updated
                 export_dict_to_df(data_dict, output_dir)
             except FileNotFoundError:
                 print("Unable to write dataframes")
+
         except Exception as e:
             if isinstance(e, KeyboardInterrupt):
                 break
             else:
-                continue
+                print(e)
+                _ = input("wtf??")
     print("Now showing all targets that have been processed!")
     get_obs(db_name)

@@ -500,7 +500,7 @@ def _basic_waterfall(
     fig1.tight_layout()
     fig1.subplots_adjust(hspace=0.01, wspace=0.01)
 
-    fig2, axarr2 = plt.subplots(2, 2, sharey=True, figsize=(6.5, 6.5), sharex=True)
+    fig2, axarr2 = plt.subplots(2, 2, sharey=True, figsize=(8.5, 8.5), sharex=True)
     for idx, tel in enumerate(all_fluxes):
         # disp_arr = np.zeros((len(tel), len(tel[0])))
         for jdx, spectrum in enumerate(tel):
@@ -518,10 +518,10 @@ def _basic_waterfall(
 
     if output_dir is not None and save_fig:
         fig1.savefig(
-            f"{output_dir}/{targname}_{band}_waterfall_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.png"
+            f"{output_dir}/{targname}_{band}_waterfall_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.pdf"
         )
         fig2.savefig(
-            f"{output_dir}/{targname}_{band}_photometry_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.png"
+            f"{output_dir}/{targname}_{band}_photometry_bcd{bcd}_ch{is_chopping}_mjd{f'{mjds[0]:.4f}'.replace('.','p')}.pdf"
         )
 
     if verbose > 1:
@@ -672,9 +672,9 @@ def do_obj_corr_plots(
     plt.tight_layout()
 
     if output_dir is not None and save_fig:
-        # fig1.savefig(f"{output_dir}/{target}_group_delay_lambda{wl}.png")
-        fig2.savefig(f"{output_dir}/{target}_{band}_fringe_peak_lambda{wl}.png")
-        fig3.savefig(f"{output_dir}/{target}_{band}_zero-order-fringe_lambda{wl}.png")
+        # fig1.savefig(f"{output_dir}/{target}_group_delay_lambda{wl}.pdf")
+        fig2.savefig(f"{output_dir}/{target}_{band}_fringe_peak_lambda{wl}.pdf")
+        fig3.savefig(f"{output_dir}/{target}_{band}_zero-order-fringe_lambda{wl}.pdf")
 
     if verbose > 1:
         plt.show()

@@ -380,11 +380,11 @@ def plot_vis(
             np.median(bcd_sorted[0][i], 0),
             np.median(bcd_sorted[1][i], 0),
             yerr=np.std(bcd_sorted[1][i], 0),
-            c="k",
+            c=bcd_color_dict["ii"],
             zorder=1,
             marker="o",
             ls="none",
-            alpha=0.95,
+            alpha=0.75,
             label=label,
             errorevery=10,
         )
@@ -407,11 +407,11 @@ def plot_vis(
             np.median(bcd_sorted[0][i], 0),
             np.median(bcd_sorted[2][i], 0),
             yerr=np.std(bcd_sorted[2][i], 0),
-            c="b",
+            c=bcd_color_dict["oi"],
             zorder=1,
             marker="s",
             ls="none",
-            alpha=0.95,
+            alpha=0.75,
             label=label,
             errorevery=10,
         )
@@ -435,11 +435,11 @@ def plot_vis(
             np.median(bcd_sorted[0][i], 0),
             np.median(bcd_sorted[3][i], 0),
             yerr=np.std(bcd_sorted[3][i], 0),
-            c="g",
+            c=bcd_color_dict["io"],
             zorder=1,
             marker="^",
             ls="none",
-            alpha=0.95,
+            alpha=0.75,
             label=label,
         )
         for jdx in range(len(bcd_sorted[3][i])):
@@ -464,7 +464,7 @@ def plot_vis(
                 zorder=1,
                 marker="o",
                 ls="none",
-                alpha=0.95,
+                alpha=0.75,
             )
             for jdx in range(len(bcd_sorted[4][i])):
                 axarr3.flatten()[i + 6].errorbar(
@@ -550,10 +550,10 @@ def plot_vis(
     fig4.tight_layout()
 
     if output_dir is not None and save_fig:
-        fig1.savefig(f"{output_dir}/{targname}_{band}_coher_vis.png")
-        fig2.savefig(f"{output_dir}/{targname}_{band}_incoher_vis.png")
-        fig3.savefig(f"{output_dir}/{targname}_{band}_bcd_compare_vis.png")
-        fig4.savefig(f"{output_dir}/{targname}_{band}_diff_phase.png")
+        fig1.savefig(f"{output_dir}/{targname}_{band}_coher_vis.pdf")
+        fig2.savefig(f"{output_dir}/{targname}_{band}_incoher_vis.pdf")
+        fig3.savefig(f"{output_dir}/{targname}_{band}_bcd_compare_vis.pdf")
+        fig4.savefig(f"{output_dir}/{targname}_{band}_diff_phase.pdf")
 
     if verbose > 1:
         plt.show()
