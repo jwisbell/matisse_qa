@@ -152,7 +152,6 @@ if __name__ == "__main__":
                 except Exception as e:
                     print("Something went wrong while plotting group delay...")
                     print(e)
-                    _ = input("huh")
 
                 sof = ""
                 try:
@@ -227,6 +226,6 @@ if __name__ == "__main__":
                 break
             else:
                 print(e)
-                _ = input("wtf??")
+                continue
     print("Now showing all targets that have been processed!")
     get_obs(db_name)

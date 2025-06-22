@@ -67,7 +67,6 @@ def merge_pdfs(pdf_paths, output_pdf):
     # Create a merger object
     writer = PdfWriter()
     print("writing pdf")
-    _ = input(output_pdf)
 
     for path in pdf_paths:
         reader = PdfReader(path)
