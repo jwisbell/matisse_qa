@@ -87,6 +87,7 @@ def plot_opd(
                     color=bcd_color_dict[bcd],
                     # label=bcd,
                     marker=".",
+                    zorder=1,
                 )
                 axarr[sta_idx, 0].fill_between(
                     times, mn - std, mn + std, color="lightgray", alpha=0.5
@@ -94,12 +95,18 @@ def plot_opd(
                 s = np.where(np.abs(opds[:, idx] - mn) > (2 * default_std))
                 masks[sta_idx].append(times[s[0]])
                 axarr[sta_idx, 0].scatter(
-                    times[s], opds[:, idx][s], color="r", marker="x", alpha=0.25
+                    times[s],
+                    opds[:, idx][s],
+                    color="r",
+                    marker="x",
+                    alpha=0.25,
+                    zorder=1,
                 )
                 axarr2.flatten()[sta_idx].scatter(
                     times[1:],
                     np.abs(np.diff(opds[:, idx])),
                     color=bcd_color_dict[bcd],
+                    zorder=1,
                     # label=bcd,
                 )
     total_opd_measurements = 0
@@ -110,7 +117,7 @@ def plot_opd(
     for loc in final_mask:
         for idx in range(6):
             axarr[idx, 0].plot(
-                [loc, loc], [-yscale, yscale], color="r", lw=3, alpha=0.15
+                [loc, loc], [-yscale, yscale], color="r", lw=3, alpha=0.15, zorder=0
             )
 
     for bcd, color in bcd_color_dict.items():
