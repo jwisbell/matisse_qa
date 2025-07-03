@@ -12,16 +12,18 @@ import numpy as np
 from load_files import load_opd, load_phot_beams, load_raw_int, find_sof, load_spectrum
 from phot_plots import plot_spectra
 from make_pdf import merge_pdfs, create_title_page
-from utils import export_dict_to_df
+from utils import export_dict_to_df, cleanup_plots
 from waterfall import do_obj_corr_plots, do_waterfall
 from vis2_plots import plot_vis
 from t3_plots import plot_cphase
 from opd_plots import plot_opd
-from db import create_database, get_obs, insert_observation
 from sys import argv
-from os import mkdir
+from os import mkdir, _exit
+from concurrent.futures import ProcessPoolExecutor
 
-if __name__ == "__main__":
+
+def process_directory(d):
+    # TODO: up until N_cores, do each directory in parallel
     script, configfile = argv
     with open(configfile, "r") as f:
         cf = json.load(f)
@@ -31,19 +33,11 @@ if __name__ == "__main__":
     opd_cutoff = int(cf["opd_cutoff"])
     skip_plotting = cf["tables_only"]
     save_fig = True
+    logfile = f"{output_dir}/qc_log_{d.split('/')[-1]}.txt"
+    with open(logfile, "w") as f:
+        f.write(f"Log for {d}")
+        print(f"Making log file at {logfile}")
 
-    db_name = f"{output_dir}/all_obs.db"
-    # Initialize the database
-    create_database(db_name)
-
-    band = "LM"
-    directories = glob(data_dir + "/*raw_estimates*.rb")
-    if ".rb" in data_dir:
-        # it's already a directory!
-        directories = [data_dir]
-
-    print(directories, data_dir)
-    for d in directories:
         try:
             if "HAWAII" in d:
                 band = "LM"
@@ -51,54 +45,63 @@ if __name__ == "__main__":
                 band = "N"
 
             files = glob(f"{d}/*RAW_INT_00*.fits")
-            print("\n\n" + "#" * 128)
-            print(f"Working on {d}")
+            f.write("\n\n" + "#" * 128)
+            f.write(f"Working on {d}\n")
             try:
-                print("Loading files ... ")
+                f.write("Loading files ... \n")
                 data_dict = load_raw_int(files, verbose=verbose)
                 opd_files = np.sort(glob(f"{d}/*OPD*00*.fits"))
                 objcorr_files = glob(f"{d}/*OBJ_CORR*.fits")
                 phot_files = np.sort(glob(f"{d}/*PHOT*00*.fits"))
                 spectra_files = np.sort(glob(f"{d}/*SPECTRUM*00*.fits"))
-                print("Files loaded successfully!")
+                f.write("Files loaded successfully!\n")
             except FileNotFoundError:
-                print(f"No files found in {d}")
-                continue
+                f.write(f"No files found in {d}\n")
+                return
             # TODO: using the tpl information, make subdirs in the output dir
+
+            f.write(objcorr_files[0])
+            f.write("\n")
 
             try:
                 # Do this here and then again later when the qcparams['custom'] has been updated
                 export_dict_to_df(data_dict, output_dir)
+                f.write("Wrote data to dataframes \n")
             except FileNotFoundError:
-                print("Unable to write dataframes")
+                f.write("Unable to write dataframes\n")
 
             if len(data_dict["inst"]["tpl"]) == 0:
-                continue
+                return
 
             tpl_start = data_dict["inst"]["tpl"]
             formatted_outdir = f"{output_dir}/{tpl_start.replace(':','_')}/"
-            print(data_dict["inst"]["targname"])
+            f.write(data_dict["inst"]["targname"])
 
             # make the directories
             try:
                 mkdir(formatted_outdir)
             except FileExistsError:
-                print(f"subdir {formatted_outdir} already exists")
+                f.write(
+                    f"subdir {formatted_outdir} already exists. Clearing existing plots... \n"
+                )
+                cleanup_plots(formatted_outdir)
             except FileNotFoundError:
-                print(f"subdir {formatted_outdir} is not a valid path. Exiting...")
+                f.write(f"subdir {formatted_outdir} is not a valid path. Exiting... \n")
                 exit()
 
-            insert_observation(
-                data_dict["inst"]["targname"],
-                tpl_start,
-                data_dict["inst"]["tau0"] * 1000,
-                db_name,
-            )
+            # insert_observation(
+            #     data_dict["inst"]["targname"],
+            #     tpl_start,
+            #     data_dict["inst"]["tau0"] * 1000,
+            #     db_name,
+            # )
 
             # start with the opds so that a mask can be generated
             if True:
-                print("Processing OPDs...")
+                f.write("Loading OPDs...\n")
                 opd_dict = load_opd(opd_files, verbose=verbose)
+
+                f.write("Plotting OPDs...\n")
                 mask = plot_opd(
                     data_dict,
                     opd_dict,
@@ -107,36 +110,36 @@ if __name__ == "__main__":
                     opd_cutoff=opd_cutoff,
                 )
             else:
-                print("Error processing OPDs")
+                f.write("Error processing OPDs")
 
             # plot the visibilities
             try:
-                print("Plotting visibilities ... ")
+                f.write("Plotting visibilities ... ")
                 plot_vis(
                     data_dict,
                     save_fig=save_fig,
                     output_dir=formatted_outdir,
                     verbose=verbose,
                 )
-                print("Visibilities plotted successfully!")
+                f.write("Visibilities plotted successfully!\n")
             except UnboundLocalError:
-                print(f"Something wrong with {d} when plotting visibilities")
+                f.write(f"Something wrong with {d} when plotting visibilities \n")
 
             try:
-                print("Plotting closure phases ...")
+                f.write("Plotting closure phases ...")
                 plot_cphase(
                     data_dict,
                     output_dir=formatted_outdir,
                     save_fig=save_fig,
                     verbose=verbose,
                 )
-                print("Closure phases plotted successfully!")
+                f.write("Closure phases plotted successfully!\n")
             except UnboundLocalError:
-                print(f"Something wrong with {d} when plotting closure phases")
+                f.write(f"Something wrong with {d} when plotting closure phases\n")
 
             if not skip_plotting:
                 try:
-                    print("Plotting fringe peaks ... ")
+                    f.write("Plotting fringe peaks ... ")
                     mywl = 3.5
                     if band == "N":
                         mywl = 8.5
@@ -149,16 +152,19 @@ if __name__ == "__main__":
                         wl=mywl,
                         save_fig=save_fig,
                     )
+                    f.write("Plotting fringe peaks successful \n ")
                 except Exception as e:
-                    print("Something went wrong while plotting group delay...")
+                    f.write(
+                        "Something went wrong while plotting group delay or fringe peaks...\n"
+                    )
                     print(e)
 
                 sof = ""
                 try:
                     sof = find_sof(data_dir, tpl_start)
-                    print(sof)
+                    f.write(sof)
                 except:
-                    print("SOF not found... ")
+                    f.write("SOF not found, not making waterfalls \n")
 
                 if len(sof) > 0:  # True:
                     do_waterfall(
@@ -168,10 +174,10 @@ if __name__ == "__main__":
                         save_fig=save_fig,
                     )
                 else:  # except (KeyError, FileNotFoundError) as e:
-                    print("SOF file missing, skipping waterfall plots, ")
+                    f.write("SOF file missing, skipping waterfall plots\n")
 
                 spectral_dict = load_spectrum(spectra_files, verbose=verbose)
-                # print(spectral_dict, "test")
+                # f.write(spectral_dict, "test")
                 try:
                     plot_spectra(
                         spectral_dict,
@@ -181,8 +187,8 @@ if __name__ == "__main__":
                         output_dir=formatted_outdir,
                     )
                 except (KeyError, ValueError) as e:
-                    print(
-                        f"Something went wrong while creating the spectral plots... {e}"
+                    f.write(
+                        f"Something went wrong while creating the spectral plots... {e}\n"
                     )
 
                 # phot_dict = load_phot_beams(phot_files, verbose=verbose)
@@ -211,6 +217,7 @@ if __name__ == "__main__":
                 qc2=f"t3phi SNR @{data_dict['qcparams']['custom']['cphase']['wavelength'][0]*1e6:.2f} um: {qc2:.2f}",
                 qc3=f"Mean DPHASE STD: {qc3:.2f}",
             )
+            pdfs = [x for x in pdfs if "_title_page" not in x]
             pdfs = np.append([f"{formatted_outdir}/_title_page.pdf"], pdfs)
             merge_pdfs(
                 pdfs, formatted_outdir + f"/{tpl_start.replace(':','_')}_output.pdf"
@@ -219,13 +226,41 @@ if __name__ == "__main__":
                 # Do this here and then again later when the qcparams['custom'] has been updated
                 export_dict_to_df(data_dict, output_dir)
             except FileNotFoundError:
-                print("Unable to write dataframes")
+                f.write("Unable to write dataframes")
 
         except Exception as e:
             if isinstance(e, KeyboardInterrupt):
-                break
+                _exit(1)
             else:
                 print(e)
-                continue
-    print("Now showing all targets that have been processed!")
-    get_obs(db_name)
+                return
+
+
+if __name__ == "__main__":
+    script, configfile = argv
+    with open(configfile, "r") as f:
+        cf = json.load(f)
+    data_dir = cf["data_dir"]
+    output_dir = cf["output_dir"]
+    verbose = int(cf["verbose"])  # > 0
+    opd_cutoff = int(cf["opd_cutoff"])
+    skip_plotting = cf["tables_only"]
+    nb_cores = cf["nb_cores"]
+    save_fig = True
+
+    # db_name = f"{output_dir}/all_obs.db"
+    # Initialize the database
+    # create_database(db_name)
+
+    band = "LM"
+    directories = glob(data_dir + "/*raw_estimates*.rb")
+    if ".rb" in data_dir:
+        # it's already a directory!
+        directories = [data_dir]
+
+    print(directories, data_dir)
+    with ProcessPoolExecutor(max_workers=nb_cores) as executor:
+        executor.map(process_directory, directories)
+
+    # print("Now showing all targets that have been processed!")
+    # get_obs(db_name)

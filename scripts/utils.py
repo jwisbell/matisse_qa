@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+from glob import glob
+from os import path, remove
 
 _ut_mapping = {
     "[32 33]": 1,
@@ -19,7 +21,6 @@ _ut_triplet_mapping = {
 
 
 def apply_magic_numbers(sta_pair, bcd: str, band: str, vis2, wls):
-    print(sta_pair)
     idx = baseline_idx_from_stapair(sta_pair)
     try:
         slope = bcd_magic_numbers[band][bcd][idx][0]
@@ -186,8 +187,6 @@ def export_dict_to_df(data_dict, outdir):
     ):
         df.to_pickle(fname)
 
-    print("Wrote data to dataframes")
-
 
 def make_legend(ax):
     for name, color in bcd_color_dict.items():
@@ -195,3 +194,14 @@ def make_legend(ax):
     ax.set_ylim(1, 2)
     ax.set_xlim(1, 2)
     ax.legend()
+
+
+def cleanup_plots(fdir):
+    # remove all the pdf and png files in the directory
+    for ext in ("*.pdf", "*.png"):
+        for file_path in glob(path.join(fdir, ext)):
+            try:
+                remove(file_path)
+                print(f"Deleted: {file_path}")
+            except Exception as e:
+                print(f"Error deleting {file_path}: {e}")

@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from glob import glob
 from scipy.ndimage import median_filter
 import pandas as pd
+from concurrent.futures import ProcessPoolExecutor
+from itertools import repeat
 
 from utils import bcd_color_dict_long as bcd_color_dict
 
@@ -390,6 +392,49 @@ def extract_fluxes(tel_arr, wl=3.7e-6):
     return return_vals
 
 
+def _fft_wrapper(val):
+    return np.fft.fftshift(np.fft.fft2(val))
+
+
+def _load_data(hdudata, band, sky):
+    fluxes = []
+    if band == "LM":
+        interferogram = hdudata[11]
+        t1 = hdudata[9]
+        t2 = hdudata[10]
+        t3 = hdudata[12]
+        t4 = hdudata[13]
+        fluxes = extract_fluxes([t1, t2, t3, t4])
+    else:
+        interferogram = hdudata["data5"]  # [11]
+        t1 = hdudata["data4"]
+        t2 = hdudata["data4"]
+        t3 = hdudata["data6"]
+        t4 = hdudata["data6"]
+        fluxes = [1, 1, 1, 1]
+
+    # all_fluxes[0].append(fluxes[0])
+    # all_fluxes[1].append(fluxes[1])
+    # all_fluxes[2].append(fluxes[2])
+    # all_fluxes[3].append(fluxes[3])
+
+    # mjds.append(xf[ext].data[i][0])
+    # mjds.append(hdudata[0])
+    mjd = hdudata[0]
+
+    obs = np.array(interferogram - sky, dtype="float")
+
+    # do rudimentary bad pixel correction
+    obs[obs >= 65300] = np.nan
+    s = np.where(np.isnan(obs))
+    for x, y in zip(s[0], s[1]):
+        obs[x, y] = np.nanmedian(obs[x - 2 : x + 2, y - 2 : y + 2])
+    obs[np.isnan(obs)] = 0.0
+    obs -= np.min(obs)
+
+    return (fluxes, mjd, obs)
+
+
 def _basic_waterfall(
     targ,
     sky_files,
@@ -424,43 +469,34 @@ def _basic_waterfall(
     w = 10
 
     all_fluxes = [[], [], [], []]
+    all_obs = []
     # load each interferogram and process it
-    for i in range(len(xf[ext].data)):
-        # print(f"{i}/{len(xf[ext].data)}")
-        if band == "LM":
-            interferogram = xf[ext].data[i][11]
-            t1 = xf[ext].data[i][9]
-            t2 = xf[ext].data[i][10]
-            t3 = xf[ext].data[i][12]
-            t4 = xf[ext].data[i][13]
-            fluxes = extract_fluxes([t1, t2, t3, t4])
-        else:
-            interferogram = xf[ext].data["data5"][i]  # [11]
-            t1 = xf[ext].data["data4"]
-            t2 = xf[ext].data["data4"]
-            t3 = xf[ext].data["data6"]
-            t4 = xf[ext].data["data6"]
-            fluxes = [1, 1, 1, 1]
+    # TODO: can this be done faster???
+    #
+    arg1 = repeat(band)
+    arg2 = repeat(sky)
 
+    nb_cores = 2
+    # with ProcessPoolExecutor(max_workers=nb_cores) as executor:
+    #     loaded_data = executor.map(_load_data, xf[ext].data, arg1, arg2)
+
+    for i in range(len(xf[ext].data)):
+        fluxes, mjd, obs = _load_data(xf[ext].data[i], band, sky)
+
+        # for fluxes, mjd, obs in loaded_data:
         all_fluxes[0].append(fluxes[0])
         all_fluxes[1].append(fluxes[1])
         all_fluxes[2].append(fluxes[2])
         all_fluxes[3].append(fluxes[3])
+        mjds.append(mjd)
+        all_obs.append(obs)
 
-        mjds.append(xf[ext].data[i][0])
+    # do this in parallel?
+    # ft = np.fft.fftshift(np.fft.fft2(obs))
+    with ProcessPoolExecutor(max_workers=nb_cores) as executor:
+        ffts = executor.map(_fft_wrapper, all_obs)
 
-        obs = np.array(interferogram - sky, dtype="float")
-
-        # do rudimentary bad pixel correction
-        obs[obs >= 65300] = np.nan
-        s = np.where(np.isnan(obs))
-        for x, y in zip(s[0], s[1]):
-            obs[x, y] = np.nanmedian(obs[x - 2 : x + 2, y - 2 : y + 2])
-        obs[np.isnan(obs)] = 0.0
-        obs -= np.min(obs)
-
-        ft = np.fft.fftshift(np.fft.fft2(obs))
-
+    for ft in ffts:
         if band == "LM":
             for key, val in lm_raw_slice_locs.items():
                 if key == "7" or key == "8":
@@ -481,22 +517,44 @@ def _basic_waterfall(
                 slc /= np.max(slc)
                 slices[key].append(slc.flatten())
 
-    fig1, axarr = plt.subplots(1, 6, sharey=True, figsize=(10, 10))
+    # fig1, axarr = plt.subplots(1, 6, sharey=True, figsize=(10, 10))
+    fig1, axarr = plt.subplots(1, figsize=(10, 10))
+
+    shape = np.array(slices[list(slices.keys())[0]]).shape
+    waterfall_im = np.zeros((shape[0], shape[1] * 6))
 
     for idx, (key, value) in enumerate(slices.items()):
-        axarr.flatten()[idx].imshow(
-            np.array(value),
-            origin="upper",
-            interpolation="bilinear",
-            cmap="viridis",
-            vmin=-0.1,
-            vmax=1,
-        )
+        waterfall_im[:, idx * (2 * w) : idx * (2 * w) + 2 * w] = value
+
+    # TODO: change to be one plot instead of 6 (add together the plots)
+    # TODO: allow stretching
+
+    # for idx, (key, value) in enumerate(slices.items()):
+    #     axarr.flatten()[idx].imshow(
+    #         np.array(value),
+    #         origin="upper",
+    #         interpolation="bilinear",
+    #         cmap="viridis",
+    #         vmin=-0.1,
+    #         vmax=1,
+    #     )
+    axarr.imshow(
+        waterfall_im,
+        origin="upper",
+        interpolation="bilinear",
+        cmap="viridis",
+        vmin=-0.1,
+        vmax=1,
+        aspect="auto",
+    )
+    for idx in range(6):
+        axarr.plot([idx * (2 * w) + w] * 2, [0, shape[0]], "r--")
+
     fig1.suptitle(
         f"{targname} @ {tpl}\n(BCD:{bcd}  MJD: {mjds[0]:.4f}, chopping={is_chopping}) "
     )
-    axarr.flatten()[0].set_ylabel("Time [increasing downward]")
-    axarr.flatten()[0].set_xlabel("OPD")
+    axarr.set_ylabel("Time [increasing downward]")
+    axarr.set_xlabel("Relative OPD")
     fig1.tight_layout()
     fig1.subplots_adjust(hspace=0.01, wspace=0.01)
 
@@ -528,6 +586,9 @@ def _basic_waterfall(
         plt.show()
 
     plt.close("all")
+
+    # TODO: save the computed waterfall data???
+
     return None
 
 

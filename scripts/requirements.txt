@@ -1,0 +1,5 @@
+pypdf
+scipy
+numpy
+matplotlib
+astropy
