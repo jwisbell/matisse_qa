@@ -168,7 +168,7 @@ def plot_opd(
     df.to_pickle(
         f"{output_dir}/../{targname}_{tplstart.replace(":",'-').replace("_","-")}_{band}band_opd_df.pkl"
     )
-    print(f"Fraction flagged: {len(final_mask) / total_opd_measurements}")
+    # print(f"Fraction flagged: {len(final_mask) / total_opd_measurements}")
     data_dict["qcparams"]["custom"]["frac_flagged_opd"] = (
         len(final_mask) / total_opd_measurements
     )
