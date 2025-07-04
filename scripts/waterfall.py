@@ -476,7 +476,7 @@ def _basic_waterfall(
     arg1 = repeat(band)
     arg2 = repeat(sky)
 
-    nb_cores = 2
+    nb_cores = 4
     # with ProcessPoolExecutor(max_workers=nb_cores) as executor:
     #     loaded_data = executor.map(_load_data, xf[ext].data, arg1, arg2)
 
@@ -491,10 +491,16 @@ def _basic_waterfall(
         mjds.append(mjd)
         all_obs.append(obs)
 
-    # do this in parallel?
+    # parallel execution is slower
     # ft = np.fft.fftshift(np.fft.fft2(obs))
-    with ProcessPoolExecutor(max_workers=nb_cores) as executor:
-        ffts = executor.map(_fft_wrapper, all_obs)
+    # with ProcessPoolExecutor(max_workers=nb_cores) as executor:
+    #     ffts = executor.map(_fft_wrapper, all_obs)
+
+    # why is this slower than a for loop?
+    # ffts = np.fft.fft2(np.array(all_obs), axes=(-2, -1))
+    # ffts = np.fft.fftshift(ffts, axes=(-2, -1))
+
+    ffts = [_fft_wrapper(obs) for obs in all_obs]
 
     for ft in ffts:
         if band == "LM":
