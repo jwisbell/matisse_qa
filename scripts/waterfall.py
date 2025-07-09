@@ -8,6 +8,7 @@ from concurrent.futures import ProcessPoolExecutor
 from itertools import repeat
 
 from utils import bcd_color_dict_long as bcd_color_dict
+from utils import baseline_name_from_stapair
 
 lm_raw_slice_locs = {
     "7": 313,
@@ -462,6 +463,17 @@ def _basic_waterfall(
     mjds = []
     is_chopping = xf[0].header["eso iss chop st"] == "T"
 
+    # TODO: based on BCD status, put labels
+    labels = []
+    tels = {
+        "OUT-OUT": [[34, 35], [32, 33], [33, 34], [33, 35], [32, 34], [32, 35]],
+        "IN-IN": [[35, 34], [33, 32], [32, 35], [32, 34], [33, 35], [33, 34]],
+        "OUT-IN": [[34, 35], [33, 32], [32, 34], [32, 35], [33, 34], [33, 35]],
+        "IN-OUT": [[35, 34], [32, 33], [33, 35], [33, 34], [32, 35], [32, 34]],
+    }
+
+    labels = [baseline_name_from_stapair(x) for x in tels[bcd]]
+
     # calculate the mean sky
     sky = np.mean([_calc_mean_sky(sf, band) for sf in sky_files], 0)
 
@@ -471,7 +483,6 @@ def _basic_waterfall(
     all_fluxes = [[], [], [], []]
     all_obs = []
     # load each interferogram and process it
-    # TODO: can this be done faster???
     #
     arg1 = repeat(band)
     arg2 = repeat(sky)
@@ -532,9 +543,6 @@ def _basic_waterfall(
     for idx, (key, value) in enumerate(slices.items()):
         waterfall_im[:, idx * (2 * w) : idx * (2 * w) + 2 * w] = value
 
-    # TODO: change to be one plot instead of 6 (add together the plots)
-    # TODO: allow stretching
-
     # for idx, (key, value) in enumerate(slices.items()):
     #     axarr.flatten()[idx].imshow(
     #         np.array(value),
@@ -554,7 +562,8 @@ def _basic_waterfall(
         aspect="auto",
     )
     for idx in range(6):
-        axarr.plot([idx * (2 * w) + w] * 2, [0, shape[0]], "r--")
+        axarr.plot([idx * (2 * w) + w] * 2, [1, shape[0] - 1], "r--")
+        axarr.text(idx * (2 * w) + 1, 10, labels[idx], color="magenta")
 
     fig1.suptitle(
         f"{targname} @ {tpl}\n(BCD:{bcd}  MJD: {mjds[0]:.4f}, chopping={is_chopping}) "
