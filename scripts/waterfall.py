@@ -8,6 +8,7 @@ from concurrent.futures import ProcessPoolExecutor
 from itertools import repeat
 
 from utils import bcd_color_dict_long as bcd_color_dict
+from utils import baseline_name_from_stapair
 
 lm_raw_slice_locs = {
     "7": 313,
@@ -462,6 +463,16 @@ def _basic_waterfall(
     mjds = []
     is_chopping = xf[0].header["eso iss chop st"] == "T"
 
+    labels = []
+    tels = {
+        "OUT-OUT": [[34, 35], [32, 33], [33, 34], [33, 35], [32, 34], [32, 35]],
+        "IN-IN": [[35, 34], [33, 32], [32, 35], [32, 34], [33, 35], [33, 34]],
+        "OUT-IN": [[34, 35], [33, 32], [32, 34], [32, 35], [33, 34], [33, 35]],
+        "IN-OUT": [[35, 34], [32, 33], [33, 35], [33, 34], [32, 35], [32, 34]],
+    }
+
+    labels = [baseline_name_from_stapair(x) for x in tels[bcd]]
+
     # calculate the mean sky
     sky = np.mean([_calc_mean_sky(sf, band) for sf in sky_files], 0)
 
@@ -471,7 +482,6 @@ def _basic_waterfall(
     all_fluxes = [[], [], [], []]
     all_obs = []
     # load each interferogram and process it
-    # TODO: can this be done faster???
     #
     arg1 = repeat(band)
     arg2 = repeat(sky)
@@ -532,9 +542,6 @@ def _basic_waterfall(
     for idx, (key, value) in enumerate(slices.items()):
         waterfall_im[:, idx * (2 * w) : idx * (2 * w) + 2 * w] = value
 
-    # TODO: change to be one plot instead of 6 (add together the plots)
-    # TODO: allow stretching
-
     # for idx, (key, value) in enumerate(slices.items()):
     #     axarr.flatten()[idx].imshow(
     #         np.array(value),
@@ -554,7 +561,8 @@ def _basic_waterfall(
         aspect="auto",
     )
     for idx in range(6):
-        axarr.plot([idx * (2 * w) + w] * 2, [0, shape[0]], "r--")
+        axarr.plot([idx * (2 * w) + w] * 2, [1, shape[0] - 1], "r--")
+        axarr.text(idx * (2 * w) + 1, 10, labels[idx], color="magenta")
 
     fig1.suptitle(
         f"{targname} @ {tpl}\n(BCD:{bcd}  MJD: {mjds[0]:.4f}, chopping={is_chopping}) "
@@ -598,13 +606,23 @@ def _basic_waterfall(
     return None
 
 
-def _get_files_from_sof(sofname):
+def _get_files_from_sof(sofname, band="LM"):
     # extract all the sky and targ/calib files from the sof that the pipeline generates
     sky_files = []
     targ_files = []
     with open(sofname, "r") as f:
         lines = f.readlines()
         for line in lines:
+            # if band == "LM":
+            #     # L-band -- skip aquarius files
+            #     if "HAWAII" not in line:
+            #         continue
+            # else:
+            #     # N-band -- skip hawaii files
+            #     if "HAWAII" in line:
+            #         continue
+            print(line)
+
             if "CALIB" in line or "TARG" in line:
                 targ_files.append(line.split()[0])
             elif "SKY_RAW" in line:
@@ -740,7 +758,7 @@ def do_obj_corr_plots(
 
     if output_dir is not None and save_fig:
         # fig1.savefig(f"{output_dir}/{target}_group_delay_lambda{wl}.pdf")
-        fig2.savefig(f"{output_dir}/{target}_{band}_fringe_peak_lambda{wl}.pdf")
+        # fig2.savefig(f"{output_dir}/{target}_{band}_fringe_peak_lambda{wl}.pdf")
         fig3.savefig(f"{output_dir}/{target}_{band}_zero-order-fringe_lambda{wl}.pdf")
 
     if verbose > 1:
@@ -760,10 +778,10 @@ def do_waterfall(sof, output_dir, verbose, save_fig):
     # find the right files and then call the plotting function
     # the main script is responsible for finding the sof
 
-    targ_files, sky_files = _get_files_from_sof(sof)
     band = "N"
     if "HAWAII" in sof:
         band = "LM"
+    targ_files, sky_files = _get_files_from_sof(sof, band)
 
     print(targ_files, sky_files)
 

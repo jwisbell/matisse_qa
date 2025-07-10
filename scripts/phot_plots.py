@@ -39,6 +39,20 @@ def plot_spectra(
     # band = data_dict["inst"]["band"]
     mywls = 0
     maxflux = 0
+
+    exposure_counter = {k: 0 for k in bcd_color_dict.keys()}
+    marker_dict = {
+        1: "s",
+        2: "o",
+        3: "^",
+        4: "v",
+        5: "d",
+        6: "x",
+        7: "+",
+        8: ".",
+        0: "none",
+    }
+
     for key, value in data_dict.items():
         if key == "targname":
             continue
@@ -48,12 +62,21 @@ def plot_spectra(
         mywls = wls
         tels = value["tels"]
         time = value["time"]
+        bcd = key
 
         color = bcd_color_dict[key]
+        exposure_counter[bcd] += 1
+
+        marker = marker_dict[exposure_counter[bcd]]
+
         for idx in range(len(fluxes)):
             for jdx, t in enumerate(tels[idx]):
                 axarr.flatten()[mapping[t]].plot(
-                    wls[idx] * 1e6, fluxes[idx][jdx], color=color, label=key
+                    wls[idx] * 1e6,
+                    fluxes[idx][jdx],
+                    color=color,
+                    label=key,
+                    marker=marker,
                 )
                 axarr.flatten()[mapping[t]].set_xticklabels("")
                 if np.max(fluxes[idx][jdx]) > maxflux:
@@ -64,6 +87,7 @@ def plot_spectra(
                     fluxes[idx][jdx],
                     c=[time[idx]] * len(wls[idx]),
                     norm=normtime,
+                    s=1,
                 )
 
     plt.colorbar(im, ax=axarr.flatten()[-1], label="Time")

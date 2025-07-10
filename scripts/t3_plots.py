@@ -9,7 +9,13 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from utils import triplet_idx_from_statriplet, bcd_flip, bcd_marker_dict, mask_wls
+from utils import (
+    triplet_idx_from_statriplet,
+    bcd_flip,
+    bcd_marker_dict,
+    mask_wls,
+    bcd_color_dict,
+)
 
 mpl.rcParams["font.family"] = "serif"
 mpl.rcParams["xtick.direction"] = "in"
@@ -35,15 +41,28 @@ def plot_cphase(
     targname = data_dict_all["inst"]["targname"]
     band = data_dict_all["inst"]["band"]
 
-    fig1, axarr1 = plt.subplots(2, 5, figsize=(11, 8.5), width_ratios=[1, 1, 1, 1, 0.5])
-    fig2, axarr2 = plt.subplots(1, 3, figsize=(8.5, 4.25), width_ratios=[1, 1, 0.5])
-    axarr1[0, -1].axis("off")
-    axarr1[1, -1].axis("off")
-    axarr2[-1].axis("off")
+    fig1, axarr1 = plt.subplots(2, 4, figsize=(11, 8.5), width_ratios=[1, 1, 1, 1])
+    fig2, axarr2 = plt.subplots(1, 2, figsize=(8.5, 4.25), width_ratios=[1, 1])
+    # axarr1[0, -1].axis("off")
+    # axarr1[1, -1].axis("off")
+    # axarr2[-1].axis("off")
 
     loop_names = ["2-3-4", "1-2-3", "1-2-4", "1-3-4"]
 
     collected_vals = [[], [], [], []]
+
+    exposure_counter = {k: 0 for k in bcd_color_dict.keys()}
+    marker_dict = {
+        1: "s",
+        2: "o",
+        3: "^",
+        4: "v",
+        5: "d",
+        6: "x",
+        7: "+",
+        8: ".",
+        0: "none",
+    }
 
     for i in range(0, len(data_dict["t3phi"])):
         sta = data_dict["t3_sta"][i]
@@ -62,6 +81,7 @@ def plot_cphase(
         pa = np.degrees(np.arctan2(v1, u1))
 
         bcd = data_dict["bcd"][i]
+        exposure_counter[bcd] += 1
 
         ydata = data_dict["t3phi"][i]
         yerr = data_dict["t3phi_err"][i]
@@ -81,16 +101,19 @@ def plot_cphase(
         zdata = [pa] * len(xdata)
 
         j = triplet_idx_from_statriplet(sta)
-        marker = bcd_marker_dict[bcd]
+        color = bcd_color_dict[bcd]
+
+        marker = marker_dict[exposure_counter[bcd] // 4]
 
         im = axarr1.flatten()[j % 4].scatter(
             xdata,
             ydata,
             s=2,
-            c=zdata,
-            norm=normpa,
-            cmap="twilight",
+            color=color,
+            # norm=normpa,
+            # cmap="twilight",
             zorder=1,
+            marker=marker,
             alpha=0.95,
         )
 
@@ -101,7 +124,7 @@ def plot_cphase(
             ls="none",
             marker=".",
             color="k",
-            alpha=0.1,
+            alpha=0.0,
             zorder=0,
             errorevery=10,
         )
@@ -111,18 +134,18 @@ def plot_cphase(
             xdata,
             ydata,
             s=5,
-            c=zdata,
-            norm=normpa,
-            cmap="twilight",
+            color=color,
+            # norm=normpa,
+            # cmap="twilight",
             zorder=1,
             marker=marker,
-            alpha=0.5,
+            alpha=0.95,
         )
         axarr1[1, j % 4].errorbar(
-            xdata, ydata, yerr=yerr, ls="-", marker=".", color="k", alpha=0.25, zorder=0
+            xdata, ydata, yerr=yerr, ls="-", marker=".", color="k", alpha=0.0, zorder=0
         )
 
-        axarr1[1, j % 4].set_ylim([-30, 30])
+        axarr1[1, j % 4].set_ylim([-15, 15])
         axarr1[1, j % 4].set_title(loop_names[j])
 
         collected_vals[j].append(ydata)
@@ -131,9 +154,10 @@ def plot_cphase(
             perimeter / xdata,
             ydata,
             s=5,
-            c=zdata,
-            norm=normpa,
-            cmap="twilight",
+            color=color,
+            # c=zdata,
+            # norm=normpa,
+            # cmap="twilight",
             zorder=1,
             marker=marker,
             alpha=0.5,
@@ -154,9 +178,10 @@ def plot_cphase(
             perimeter / xdata,
             ydata,
             s=5,
-            c=zdata,
-            norm=normpa,
-            cmap="twilight",
+            color=color,
+            # c=zdata,
+            # norm=normpa,
+            # cmap="twilight",
             zorder=1,
             marker=marker,
             alpha=0.5,
@@ -173,7 +198,7 @@ def plot_cphase(
             errorevery=10,
         )
         axarr2.flatten()[0].set_ylim([-180, 180])
-        axarr2.flatten()[1].set_ylim([-30, 30])
+        axarr2.flatten()[1].set_ylim([-15, 15])
 
     for i in range(0, 4):
         try:
@@ -181,7 +206,7 @@ def plot_cphase(
                 xdata,
                 np.median(collected_vals[i], 0),
                 yerr=np.std(collected_vals[i], 0) * 0,
-                ls="--",
+                ls="none",
                 marker=".",
                 color="r",
                 alpha=0.9,
@@ -192,7 +217,7 @@ def plot_cphase(
                 xdata,
                 np.median(collected_vals[i], 0),
                 yerr=np.std(collected_vals[i], 0) * 0,
-                ls="--",
+                ls="-",
                 marker=".",
                 color="r",
                 alpha=0.9,
@@ -201,8 +226,8 @@ def plot_cphase(
             )
         except:
             continue
-    plt.colorbar(im, ax=axarr1[-1, -1], label="PA [deg]")
-    plt.colorbar(im, ax=axarr2[-1], label="PA [deg]")
+    # plt.colorbar(im, ax=axarr1[-1, -1], label="PA [deg]")
+    # plt.colorbar(im, ax=axarr2[-1], label="PA [deg]")
 
     axarr1[1, 0].set_ylabel("T3 [deg]")
     axarr1[1, 0].set_xlabel("Wavelength [micron]")
@@ -210,6 +235,15 @@ def plot_cphase(
     axarr2[0].set_ylabel("T3 [deg]")
     axarr2[0].set_xlabel("Mean Leg Length Spatial Freq. [Mlambda]")
 
+    for num, marker in marker_dict.items():
+        if num == 0:
+            continue
+        axarr1[0, 0].scatter(
+            xdata[0], 200, color="k", marker=marker, label=f"Exp. {num}"
+        )
+        axarr2[0].scatter(xdata[0], 200, color="k", marker=marker, label=f"Exp. {num}")
+    axarr1[0, 0].legend(fontsize="x-small", ncol=4)
+    axarr2[0].legend(fontsize="x-small", ncol=4)
     fig1.tight_layout()
     fig2.tight_layout()
 

@@ -216,6 +216,8 @@ def process_directory(d):
                 qc1=f"Vis2 SNR @{data_dict['qcparams']['custom']['vis2']['wavelength'][0]*1e6:.2f} um: {qc1:.2f}",
                 qc2=f"t3phi SNR @{data_dict['qcparams']['custom']['cphase']['wavelength'][0]*1e6:.2f} um: {qc2:.2f}",
                 qc3=f"Mean DPHASE STD: {qc3:.2f}",
+                flux=f"Catalog Flux={data_dict['inst']['cat_flux']:.1f}",
+                diameter=f"Catalog Diam.={data_dict['inst']['cat_diam']:.1f}",
             )
             pdfs = [x for x in pdfs if "_title_page" not in x]
             pdfs = np.append([f"{formatted_outdir}/_title_page.pdf"], pdfs)

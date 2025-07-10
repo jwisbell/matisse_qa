@@ -82,6 +82,21 @@ def load_raw_int(fnames, verbose: int = 0):
             ]
         )
 
+        try:
+            catalog_flux = float(x[0].header["HIERARCH PRO MDFC FLUX L"])
+        except:
+            # not a calibrator
+            catalog_flux = -1
+            pass
+        try:
+            catalog_diam = float(x[0].header["ESO PRO JSDC DIAMETER"])
+        except:
+            # not a calibrator
+            catalog_diam = -1
+            pass
+        data["inst"]["cat_flux"] = catalog_flux
+        data["inst"]["cat_diam"] = catalog_diam
+
         bcd = "oo"
         if "0002.fits" in f:
             bcd = "ii"

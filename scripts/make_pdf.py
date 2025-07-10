@@ -12,7 +12,9 @@ def convert_pngs_to_pdf(png_list, output_pdf):
         f.write(img2pdf.convert(*png_list[::-1]))
 
 
-def create_title_page(output_path, title, subtitle, tau0, qc1, qc2, qc3):
+def create_title_page(
+    output_path, title, subtitle, tau0, qc1, qc2, qc3, flux, diameter
+):
     fig, ax = plt.subplots(figsize=(8.27, 11.69))  # A4 size in inches (210mm x 297mm)
     ax.axis("off")  # No axes
 
@@ -54,6 +56,22 @@ def create_title_page(output_path, title, subtitle, tau0, qc1, qc2, qc3):
         0.5,
         0.35,
         f"{qc3}",
+        ha="center",
+        va="center",
+        fontsize=12,
+    )
+    plt.text(
+        0.5,
+        0.30,
+        f"{flux}",
+        ha="center",
+        va="center",
+        fontsize=12,
+    )
+    plt.text(
+        0.5,
+        0.25,
+        f"{diameter}",
         ha="center",
         va="center",
         fontsize=12,
