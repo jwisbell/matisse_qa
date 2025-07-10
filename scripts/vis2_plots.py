@@ -31,7 +31,11 @@ normvis = mpl.colors.Normalize(vmin=0, vmax=1.1)
 
 
 def plot_vis(
-    data_dict_all, output_dir: str = "/.", save_fig: bool = False, verbose: int = 0
+    data_dict_all,
+    output_dir: str = "/.",
+    save_fig: bool = False,
+    verbose: int = 0,
+    do_magic_numbers: bool = True,
 ):
     """
     data_dict: dictionary containing the following keys
@@ -49,6 +53,18 @@ def plot_vis(
 
     bl_lengths = [[], [], [], [], [], []]
     bl_names = ["UT3-UT4", "UT1-UT2", "UT2-UT3", "UT2-UT4", "UT1-UT3", "UT1-UT4"]
+    exposure_counter = {k: 0 for k in bcd_color_dict.keys()}
+    marker_dict = {
+        1: "s",
+        2: "o",
+        3: "^",
+        4: "v",
+        5: "d",
+        6: "x",
+        7: "+",
+        8: ".",
+        0: "none",
+    }
     for i in range(len(data_dict["cflux"])):
         u = data_dict["u"][i]
         v = data_dict["v"][i]
@@ -60,6 +76,8 @@ def plot_vis(
 
         bcd = data_dict["bcd"][i]
         yupper = 1.1
+        exposure_counter[bcd] += 1
+        marker = marker_dict[exposure_counter[bcd] // 6]
 
         wl_mask = mask_wls(xdata, band)
         s = wl_mask
@@ -78,7 +96,9 @@ def plot_vis(
             # c=[pa] * len(data_dict["wl_vis"][i]),
             # norm=normpa,
             # cmap="twilight",
-            color=bcd_color_dict[bcd],
+            fc=bcd_color_dict[bcd],
+            # ec="k",
+            marker=marker,
             zorder=1,
         )
         axarr1.flatten()[idx].errorbar(
@@ -89,7 +109,7 @@ def plot_vis(
             color="k",
             ls="none",
             marker=".",
-            alpha=0.1,
+            alpha=0.0,
             errorevery=10,
         )
         axarr1.flatten()[idx].set_ylim([0, yupper])
@@ -100,7 +120,9 @@ def plot_vis(
             # c=[pa] * len(data_dict["wl_vis"][i]),
             # norm=normpa,
             # cmap="twilight",
-            color=bcd_color_dict[bcd],
+            fc=bcd_color_dict[bcd],
+            # ec="k",
+            marker=marker,
             zorder=1,
             s=2,
         )
@@ -147,6 +169,14 @@ def plot_vis(
         axarr1.flatten()[7].set_ylabel("v [Mlambda]")
         axarr1.flatten()[7].set_aspect("equal")
 
+    for num, marker in marker_dict.items():
+        if num == 0:
+            continue
+        axarr1[0, 0].scatter(
+            xdata[0], 200, color="k", marker=marker, label=f"Exp. {num}"
+        )
+    axarr1[0, 0].legend(fontsize="x-small", ncol=4)
+
     bcd_sorted = [
         [[], [], [], [], [], []],
         [[], [], [], [], [], []],
@@ -156,6 +186,18 @@ def plot_vis(
         [[], [], [], [], [], []],
     ]
 
+    exposure_counter = {k: 0 for k in bcd_color_dict.keys()}
+    marker_dict = {
+        1: "s",
+        2: "o",
+        3: "^",
+        4: "v",
+        5: "d",
+        6: "x",
+        7: "+",
+        8: ".",
+        0: "none",
+    }
     # vis 2 plots!
     for i in range(len(data_dict["vis2"])):
         u = data_dict["u"][i]
@@ -167,8 +209,11 @@ def plot_vis(
         xdata = data_dict["wl_vis"][i] * 1e6
         ydata = data_dict["vis2"][i]
         bcd = data_dict["bcd"][i]
+        exposure_counter[bcd] += 1
+        marker = marker_dict[exposure_counter[bcd] // 6]
 
-        ydata = apply_magic_numbers(sta, bcd, band, ydata, xdata)
+        if do_magic_numbers:
+            ydata = apply_magic_numbers(sta, bcd, band, ydata, xdata)
 
         yupper = 1.1
 
@@ -191,7 +236,9 @@ def plot_vis(
             # c=[pa] * len(data_dict["wl_vis"][i]),
             # norm=normpa,
             # cmap="twilight",
-            color=bcd_color_dict[bcd],
+            fc=bcd_color_dict[bcd],
+            # ec="k",
+            marker=marker,
             zorder=1,
         )
 
@@ -203,7 +250,7 @@ def plot_vis(
             color="k",
             ls="none",
             marker=".",
-            alpha=0.1,
+            alpha=0.0,
             errorevery=10,
         )
         axarr2.flatten()[idx].set_ylim([0, yupper])
@@ -214,7 +261,9 @@ def plot_vis(
             # c=[pa] * len(data_dict["wl_vis"][i]),
             # norm=normpa,
             # cmap="twilight",
-            color=bcd_color_dict[bcd],
+            fc=bcd_color_dict[bcd],
+            marker=marker,
+            # ec="k",
             zorder=1,
             s=2,
         )
@@ -274,7 +323,26 @@ def plot_vis(
             bcd_sorted[4][idx].append(ydata)
         elif bcd == "ii_phot":
             bcd_sorted[5][idx].append(ydata)
+    for num, marker in marker_dict.items():
+        if num == 0:
+            continue
+        axarr2[0, 0].scatter(
+            xdata[0], 200, color="k", marker=marker, label=f"Exp. {num}"
+        )
+    axarr2[0, 0].legend(fontsize="x-small", ncol=4)
 
+    exposure_counter = {k: 0 for k in bcd_color_dict.keys()}
+    marker_dict = {
+        1: "s",
+        2: "o",
+        3: "^",
+        4: "v",
+        5: "d",
+        6: "x",
+        7: "+",
+        8: ".",
+        0: "none",
+    }
     for i in range(len(data_dict["diff_phase"])):
         u = data_dict["u"][i]
         v = data_dict["v"][i]
@@ -286,6 +354,8 @@ def plot_vis(
         ydata = data_dict["diff_phase"][i]
         yerr = data_dict["diff_phase_err"][i]
         bcd = data_dict["bcd"][i]
+        exposure_counter[bcd] += 1
+        marker = marker_dict[exposure_counter[bcd] // 6]
 
         wl_mask = mask_wls(xdata, band)
         s = wl_mask
@@ -301,6 +371,7 @@ def plot_vis(
             # norm=normpa,
             # cmap="twilight",
             color=bcd_color_dict[bcd],
+            marker=marker,
             zorder=1,
         )
         axarr4.flatten()[idx].errorbar(
@@ -311,7 +382,7 @@ def plot_vis(
             color="k",
             ls="none",
             marker=".",
-            alpha=0.1,
+            alpha=0.0,
             errorevery=10,
         )
         axarr4.flatten()[idx].set_ylim([-180, 180])
@@ -323,6 +394,7 @@ def plot_vis(
             # norm=normpa,
             # cmap="twilight",
             color=bcd_color_dict[bcd],
+            marker=marker,
             zorder=1,
             s=2,
         )
@@ -334,7 +406,7 @@ def plot_vis(
             color="k",
             ls="none",
             marker=".",
-            alpha=0.1,
+            alpha=0.0,
             errorevery=10,
         )
         axarr4.flatten()[6].set_ylim([-180, 180])
@@ -368,6 +440,14 @@ def plot_vis(
         axarr4.flatten()[7].set_xlabel("u [Mlambda]")
         axarr4.flatten()[7].set_ylabel("v [Mlambda]")
         axarr4.flatten()[7].set_aspect("equal")
+
+    for num, marker in marker_dict.items():
+        if num == 0:
+            continue
+        axarr4[0, 0].scatter(
+            xdata[0], 200, color="k", marker=marker, label=f"Exp. {num}"
+        )
+    axarr4[0, 0].legend(fontsize="x-small", ncol=4)
 
     for i in range(6):
         label = "in-in"

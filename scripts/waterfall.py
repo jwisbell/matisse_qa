@@ -463,7 +463,6 @@ def _basic_waterfall(
     mjds = []
     is_chopping = xf[0].header["eso iss chop st"] == "T"
 
-    # TODO: based on BCD status, put labels
     labels = []
     tels = {
         "OUT-OUT": [[34, 35], [32, 33], [33, 34], [33, 35], [32, 34], [32, 35]],
@@ -749,7 +748,7 @@ def do_obj_corr_plots(
 
     if output_dir is not None and save_fig:
         # fig1.savefig(f"{output_dir}/{target}_group_delay_lambda{wl}.pdf")
-        fig2.savefig(f"{output_dir}/{target}_{band}_fringe_peak_lambda{wl}.pdf")
+        # fig2.savefig(f"{output_dir}/{target}_{band}_fringe_peak_lambda{wl}.pdf")
         fig3.savefig(f"{output_dir}/{target}_{band}_zero-order-fringe_lambda{wl}.pdf")
 
     if verbose > 1:

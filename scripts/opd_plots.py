@@ -60,6 +60,8 @@ def plot_opd(
     baselines = {k: [] for k in range(6)}
     masks = {k: [] for k in range(6)}  # mask with bad values
     start = 1e8
+    position_tracker = {}
+
     for bcd in opd_dict.keys():
         for times, opds, stas in zip(
             opd_dict[bcd]["time"], opd_dict[bcd]["opd"], opd_dict[bcd]["tels"]
@@ -71,6 +73,10 @@ def plot_opd(
             """
             if times[0] < start:
                 start = times[0]
+
+            for t in times:
+                position_tracker[f"{t:.3f}"] = bcd
+
             for idx in range(6):
                 baselines[idx].append(opds)
                 sta_idx = baseline_idx_from_stapair(stas[idx])
@@ -79,7 +85,6 @@ def plot_opd(
                 if band == "N":
                     default_std = 12
                 mn = np.nanmean(opds[:, idx])
-                # print(times[0], mn, std, "here")
 
                 axarr[sta_idx, 0].scatter(
                     times,
@@ -110,15 +115,28 @@ def plot_opd(
                     # label=bcd,
                 )
     total_opd_measurements = 0
-    for v in baselines[0]:
-        total_opd_measurements += len(v)
+    counts_per_bcd = {k: 0 for k in bcd_color_dict.keys()}
+    total_per_bcd = {k: 0 for k in bcd_color_dict.keys()}
+    for val in position_tracker.values():
+        total_per_bcd[val] += 1
 
     final_mask = _compute_mask_stats(masks, cutoff=opd_cutoff)
     for loc in final_mask:
+        counts_per_bcd[position_tracker[f"{loc:.3f}"]] += 1
+
         for idx in range(6):
             axarr[idx, 0].plot(
                 [loc, loc], [-yscale, yscale], color="r", lw=3, alpha=0.15, zorder=0
             )
+            axarr2[idx].plot(
+                [loc, loc], [0, y2scale], color="r", lw=3, alpha=0.15, zorder=0
+            )
+
+    percentages = {k: 0.0 for k in counts_per_bcd.keys()}
+
+    for k in counts_per_bcd.keys():
+        if total_per_bcd[k] > 0:
+            percentages[k] = counts_per_bcd[k] / total_per_bcd[k] * 100
 
     for bcd, color in bcd_color_dict.items():
         axarr.flatten()[-2].scatter(start, 0 * yscale, c=color, label=bcd)
@@ -146,7 +164,8 @@ def plot_opd(
 
     fig1.suptitle(
         f"OPDs -- flagging with {opd_cutoff} simultaneous bad OPDs\n"
-        + f"Frames flagged: {len(final_mask)}"
+        + f"Unchopped flagged %:  I-I:{percentages['ii']:.1f},   O-I:{percentages['oi']:.1f},   I-O:{percentages['io']:.1f},   O-O:{percentages['oo']:.1f}\n"
+        + f"Chopped flagged %: I-I_chop:{percentages['ii_phot']:.1f},    O-O_chop:{percentages['oo_phot']:.1f}"
     )
 
     axarr2.flatten()[-1].set_xlabel("Time [MJD]")
@@ -169,6 +188,4 @@ def plot_opd(
         f"{output_dir}/../{targname}_{tplstart.replace(":",'-').replace("_","-")}_{band}band_opd_df.pkl"
     )
     # print(f"Fraction flagged: {len(final_mask) / total_opd_measurements}")
-    data_dict["qcparams"]["custom"]["frac_flagged_opd"] = (
-        len(final_mask) / total_opd_measurements
-    )
+    data_dict["qcparams"]["custom"]["frac_flagged_opd"] = percentages
