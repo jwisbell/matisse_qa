@@ -61,6 +61,7 @@ def plot_opd(
     masks = {k: [] for k in range(6)}  # mask with bad values
     start = 1e8
     position_tracker = {}
+    testing_times = []
 
     for bcd in opd_dict.keys():
         for times, opds, stas in zip(
@@ -76,6 +77,7 @@ def plot_opd(
 
             for t in times:
                 position_tracker[f"{t:.3f}"] = bcd
+                testing_times.append(t)
 
             for idx in range(6):
                 baselines[idx].append(opds)
@@ -114,15 +116,49 @@ def plot_opd(
                     zorder=1,
                     # label=bcd,
                 )
-    total_opd_measurements = 0
     counts_per_bcd = {k: 0 for k in bcd_color_dict.keys()}
     total_per_bcd = {k: 0 for k in bcd_color_dict.keys()}
     for val in position_tracker.values():
         total_per_bcd[val] += 1
 
+    testing_times = np.sort(testing_times)
+    test_diff = np.diff(testing_times)
+    normal_difference = np.mean([np.mean(test_diff[:10]), np.mean(test_diff[-10:])])
+    breaks = np.where(np.abs(test_diff) - normal_difference > 3 * normal_difference)[0]
+    breaks = np.append([0], breaks)
+
+    exposure_bins = [
+        (testing_times[breaks[idx]], testing_times[breaks[idx + 1]])
+        for idx in range(len(breaks) - 1)
+    ] + [(testing_times[breaks[-1]], testing_times[-1])]
+
+    exposure_mask_counts = [0 for _ in range(len(exposure_bins))]
+    exposure_total_counts = [0 for _ in range(len(exposure_bins))]
+
+    for time in testing_times:
+        bin_idx = 0
+        for idx, bin in enumerate(exposure_bins):
+            if bin[0] <= time and time < bin[1]:
+                bin_idx = idx
+                break
+        exposure_total_counts[bin_idx] += 1
+
+    # debugging the exposure bin selection
+    # for b in breaks:
+    #     axarr[0, 0].scatter(
+    #         testing_times[b + 1], 0, marker="s", s=50, color="k", zorder=100
+    #     )
+
     final_mask = _compute_mask_stats(masks, cutoff=opd_cutoff)
     for loc in final_mask:
         counts_per_bcd[position_tracker[f"{loc:.3f}"]] += 1
+
+        bin_idx = 0
+        for bidx, bin in enumerate(exposure_bins):
+            if bin[0] <= loc < bin[1]:
+                bin_idx = bidx
+                break
+        exposure_mask_counts[bin_idx] += 1
 
         for idx in range(6):
             axarr[idx, 0].plot(
@@ -132,11 +168,15 @@ def plot_opd(
                 [loc, loc], [0, y2scale], color="r", lw=3, alpha=0.15, zorder=0
             )
 
-    percentages = {k: 0.0 for k in counts_per_bcd.keys()}
+    # percentages = {k: 0.0 for k in counts_per_bcd.keys()}
+    percentages = [
+        exposure_mask_counts[k] / 250 * 100 if exposure_total_counts[k] > 0 else 0.0
+        for k in range(len(exposure_total_counts))
+    ]
 
-    for k in counts_per_bcd.keys():
-        if total_per_bcd[k] > 0:
-            percentages[k] = counts_per_bcd[k] / total_per_bcd[k] * 100
+    # for k in counts_per_bcd.keys():
+    #     if total_per_bcd[k] > 0:
+    #         percentages[k] = counts_per_bcd[k] / total_per_bcd[k] * 100
 
     for bcd, color in bcd_color_dict.items():
         axarr.flatten()[-2].scatter(start, 0 * yscale, c=color, label=bcd)
@@ -162,10 +202,16 @@ def plot_opd(
     axarr.flatten()[-2].set_xlabel("Time [MJD]")
     axarr.flatten()[-2].set_ylabel("OPD [micron]")
 
+    # fig1.suptitle(
+    #     f"OPDs -- flagging with {opd_cutoff} simultaneous bad OPDs\n"
+    #     + f"Unchopped flagged %:  I-I:{percentages['ii']:.1f},   O-I:{percentages['oi']:.1f},   I-O:{percentages['io']:.1f},   O-O:{percentages['oo']:.1f}\n"
+    #     + f"Chopped flagged %: I-I_chop:{percentages['ii_phot']:.1f},    O-O_chop:{percentages['oo_phot']:.1f}"
+    # )
+
     fig1.suptitle(
         f"OPDs -- flagging with {opd_cutoff} simultaneous bad OPDs\n"
-        + f"Unchopped flagged %:  I-I:{percentages['ii']:.1f},   O-I:{percentages['oi']:.1f},   I-O:{percentages['io']:.1f},   O-O:{percentages['oo']:.1f}\n"
-        + f"Chopped flagged %: I-I_chop:{percentages['ii_phot']:.1f},    O-O_chop:{percentages['oo_phot']:.1f}"
+        + f"flagged %: {[f'{x:.1f}%' for x in percentages]} ",
+        fontsize="small",
     )
 
     axarr2.flatten()[-1].set_xlabel("Time [MJD]")

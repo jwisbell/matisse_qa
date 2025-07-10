@@ -606,13 +606,22 @@ def _basic_waterfall(
     return None
 
 
-def _get_files_from_sof(sofname):
+def _get_files_from_sof(sofname, band="LM"):
     # extract all the sky and targ/calib files from the sof that the pipeline generates
     sky_files = []
     targ_files = []
     with open(sofname, "r") as f:
         lines = f.readlines()
         for line in lines:
+            if band == "LM":
+                # L-band -- skip aquarius files
+                if "HAWAII" not in line:
+                    continue
+            else:
+                # N-band -- skip hawaii files
+                if "HAWAII" in line:
+                    continue
+
             if "CALIB" in line or "TARG" in line:
                 targ_files.append(line.split()[0])
             elif "SKY_RAW" in line:
@@ -768,10 +777,10 @@ def do_waterfall(sof, output_dir, verbose, save_fig):
     # find the right files and then call the plotting function
     # the main script is responsible for finding the sof
 
-    targ_files, sky_files = _get_files_from_sof(sof)
     band = "N"
     if "HAWAII" in sof:
         band = "LM"
+    targ_files, sky_files = _get_files_from_sof(sof, band)
 
     print(targ_files, sky_files)
 

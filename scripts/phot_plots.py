@@ -63,11 +63,10 @@ def plot_spectra(
         tels = value["tels"]
         time = value["time"]
         bcd = key
-        print(bcd, "phot")
 
         color = bcd_color_dict[key]
         exposure_counter[bcd] += 1
-        print(exposure_counter)
+
         marker = marker_dict[exposure_counter[bcd]]
 
         for idx in range(len(fluxes)):
