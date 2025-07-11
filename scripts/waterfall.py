@@ -613,16 +613,6 @@ def _get_files_from_sof(sofname, band="LM"):
     with open(sofname, "r") as f:
         lines = f.readlines()
         for line in lines:
-            # if band == "LM":
-            #     # L-band -- skip aquarius files
-            #     if "HAWAII" not in line:
-            #         continue
-            # else:
-            #     # N-band -- skip hawaii files
-            #     if "HAWAII" in line:
-            #         continue
-            print(line)
-
             if "CALIB" in line or "TARG" in line:
                 targ_files.append(line.split()[0])
             elif "SKY_RAW" in line:

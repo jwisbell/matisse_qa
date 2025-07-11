@@ -161,7 +161,7 @@ def process_directory(d):
 
                 sof = ""
                 try:
-                    sof = find_sof(data_dir, tpl_start)
+                    sof = find_sof(data_dir, tpl_start, band=band)
                     f.write(sof)
                 except:
                     f.write("SOF not found, not making waterfalls \n")

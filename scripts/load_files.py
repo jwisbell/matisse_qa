@@ -224,10 +224,16 @@ def load_opd(fnames, verbose=0):
     return data
 
 
-def find_sof(fdir, tpl):
+def find_sof(fdir, tpl, band=""):
     # search in this fdir for a file with extension .sof that matches the tpl
     time = tpl.replace("_", ":")
-    files = glob(f"{fdir}/*mat_raw_estimates*.sof")
+    if band == "LM":
+        det = "HAWAII"
+    elif band == "N":
+        det = "AQUARIUS"
+    else:
+        det = "A"
+    files = glob(f"{fdir}/*mat_raw_estimates*{det}*.sof")
     for file in files:
         if time in file:
             return file
