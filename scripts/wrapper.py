@@ -22,17 +22,18 @@ from os import mkdir, _exit
 from concurrent.futures import ProcessPoolExecutor
 
 
-def process_directory(d):
+def process_directory(x):
     # TODO: up until N_cores, do each directory in parallel
-    script, configfile = argv
-    with open(configfile, "r") as f:
-        cf = json.load(f)
-    data_dir = cf["data_dir"]
-    output_dir = cf["output_dir"]
-    verbose = int(cf["verbose"])  # > 0
-    opd_cutoff = int(cf["opd_cutoff"])
-    skip_plotting = cf["tables_only"]
+    # script, configfile = argv
+    # with open(configfile, "r") as f:
+    #    cf = json.load(f)
+    # data_dir = cf["data_dir"]
+    # output_dir = cf["output_dir"]
+    # verbose = int(cf["verbose"])  # > 0
+    # opd_cutoff = int(cf["opd_cutoff"])
+    # skip_plotting = cf["tables_only"]
     save_fig = True
+    d, data_dir, output_dir, verbose, opd_cutoff, skip_plotting = x
     logfile = f"{output_dir}/qc_log_{d.split('/')[-1]}.txt"
     with open(logfile, "w") as f:
         f.write(f"Log for {d}")
@@ -243,26 +244,64 @@ if __name__ == "__main__":
     with open(configfile, "r") as f:
         cf = json.load(f)
     data_dir = cf["data_dir"]
-    output_dir = cf["output_dir"]
+    # output_dir = cf["output_dir"]
     verbose = int(cf["verbose"])  # > 0
     opd_cutoff = int(cf["opd_cutoff"])
     skip_plotting = cf["tables_only"]
     nb_cores = cf["nb_cores"]
     save_fig = True
+    try:
+        output_dir = cf["output_dir"]
+        inout = False
+    except KeyError:
+        output_dir = data_dir
+        inout = True
 
+    if type(data_dir) is list:
+        print("list input")
+        data_dirs = cf["data_dir"]
+
+        for data_dir in data_dirs:
+            if inout:
+                output_dir = data_dir
+
+            # db_name = f"{output_dir}/all_obs.db"
+            # Initialize the database
+            # create_database(db_name)
+
+            band = "LM"
+            directories = glob(data_dir + "/*raw_estimates*.rb")
+            if ".rb" in data_dir:
+                # it's already a directory!
+                directories = [data_dir]
+            x = []
+            for direc in directories:
+                x.append(
+                    [direc, data_dir, output_dir, verbose, opd_cutoff, skip_plotting]
+                )
+            print(directories, data_dir)
+            with ProcessPoolExecutor(max_workers=nb_cores) as executor:
+                executor.map(process_directory, x)
+
+    # print("Now showing all targets that have been processed!")
+    # get_obs(db_name)
     # db_name = f"{output_dir}/all_obs.db"
     # Initialize the database
     # create_database(db_name)
+    else:
+        band = "LM"
+        print("here?")
+        directories = glob(data_dir + "/*raw_estimates*.rb")
+        if ".rb" in data_dir:
+            # it's already a directory!
+            directories = [data_dir]
 
-    band = "LM"
-    directories = glob(data_dir + "/*raw_estimates*.rb")
-    if ".rb" in data_dir:
-        # it's already a directory!
-        directories = [data_dir]
-
-    print(directories, data_dir)
-    with ProcessPoolExecutor(max_workers=nb_cores) as executor:
-        executor.map(process_directory, directories)
+        x = []
+        for direc in directories:
+            x.append([direc, data_dir, output_dir, verbose, opd_cutoff, skip_plotting])
+        print(directories, data_dir)
+        with ProcessPoolExecutor(max_workers=nb_cores) as executor:
+            executor.map(process_directory, x)
 
     # print("Now showing all targets that have been processed!")
     # get_obs(db_name)
